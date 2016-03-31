@@ -1,0 +1,22 @@
+# Compiled source and libraries
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.obj
+*.lib
+*log
+*sdf
+
+generic_vocabulary_100k.cluster
+
+loca_yan*
+
+# emacs temp files
+*~
+
+# Compiled binaries and temporary library files
+x64
+
+
