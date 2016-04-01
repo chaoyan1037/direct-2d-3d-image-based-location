@@ -41,13 +41,12 @@ and (w/2, h/2) is the top-right corner (where w and h are the width
 and height of the image).
 */
 
-bool PARSE_BUNDLER::ParseBundlerFile(const std::string & bundler)
+bool PARSE_BUNDLER::ParseBundlerFile()
 {
 	ClearData();
-
-	std::ifstream instream(bundler, std::ios::in);
+	std::ifstream instream(mBundle_file, std::ios::in);
 	if (!instream.is_open()){
-		std::cout << "open bundler fail: " << bundler << std::endl;
+		std::cout << "open bundler fail: " << mBundle_file << std::endl;
 		return 0;
 	}
 
@@ -146,4 +145,11 @@ bool PARSE_BUNDLER::LoadCameraInfo( ALL_PICTURES& all_pics )
 std::vector< FEATURE_3D_INFO > & PARSE_BUNDLER::GetFeature3DInfo()
 {
 	return mFeature_infos;
+}
+
+//set the bundler file name
+bool PARSE_BUNDLER::SetBundleFileName(const std::string &s)
+{
+	mBundle_file = s;
+	return 1;
 }

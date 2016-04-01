@@ -29,7 +29,7 @@ public:
 	bool LoadKeyPointAndDes(std::string des_filename);
 	
 	//the num of feature points of the picture
-	int PointsNum(){ return mFeature_points.size(); };
+	size_t PointsNum(){ return mFeature_points.size(); };
 
 	//clear all the data
 	void ClearData();
@@ -52,8 +52,11 @@ private:
 class ALL_PICTURES
 {
 public:
+
+	ALL_PICTURES() :mDBpath(""), mPictureListFile(""){};
+
 	ALL_PICTURES(const std::string& model_path, const std::string &list) 
-		:mPictureListFile(list), mDBpath(model_path){};
+		:mDBpath(model_path), mPictureListFile(list){};
 
 	~ALL_PICTURES(){};
 
@@ -62,6 +65,9 @@ public:
 
 	//clear all picture
 	bool ClearAllPictures();
+
+	//set the string contents
+	bool SetParameters(const std::string& model_path, const std::string &list);
 
 	//return all pictures
 	std::vector<PICTURE>& GetAllPictures();

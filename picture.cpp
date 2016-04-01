@@ -127,3 +127,11 @@ std::vector<PICTURE>& ALL_PICTURES::GetAllPictures()
 {
 	return mAll_pictures;
 }
+
+//set the string contents
+bool ALL_PICTURES::SetParameters(const std::string& model_path, const std::string &list)
+{
+	mDBpath = model_path;
+	mPictureListFile = list;
+	return 1;
+}

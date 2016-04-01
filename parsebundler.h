@@ -5,7 +5,7 @@
 /* parse bundler.out file, get the view  and 3d point information*/
 /* for each 3D point, find the list of 2d feature points */
 /************************************************************************/
-
+#include <set>
 #include<fstream>
 #include<vector>
 #include<omp.h>
@@ -90,6 +90,7 @@ The descriptor for view view_list[i] is stored in descriptors[128*i]...descripto
 class FEATURE_3D_INFO
 {
 public:
+
 	POINT3D mPoint;
 	std::vector<VIEW> mView_list;
 	//each single descriptor save as char*
@@ -139,6 +140,7 @@ public:
 		mDescriptor.clear();
 		mView_list.clear();
 	}
+
 };
 
 /* 
@@ -147,11 +149,19 @@ public:
 */
 class PARSE_BUNDLER
 {
+
 public:
+	//friend class, VISUALWORDS_HANDLER can access the 
+	//std::vector< FEATURE_3D_INFO > mFeature_infos;
+	friend class VISUALWORDS_HANDLER;
+
 	//constructor
 	PARSE_BUNDLER();
 
 	~PARSE_BUNDLER();
+
+	//set the bundler file name
+	bool SetBundleFileName(const std::string &s);
 
 	//get the number of 3d points in reconstruction
 	size_t GetNumPoints(){
@@ -174,7 +184,7 @@ public:
 	//parse the bundler file
 	//input parameter: the file name of the output file(bundler.out) and
 	//the filename of the list of images(usually list.txt)
-	bool ParseBundlerFile(const std::string& bundler);
+	bool ParseBundlerFile();
 
 	//load the .key info from ALL_CAMERA
 	bool LoadCameraInfo(  ALL_PICTURES& all_pics);
@@ -184,8 +194,9 @@ public:
 
 //private:
 
-	std::vector< BUNDLER_CAMERA > mCameras;
-	std::vector< FEATURE_3D_INFO > mFeature_infos;
+	std::string						mBundle_file;
+	std::vector< BUNDLER_CAMERA >	mCameras;
+	std::vector< FEATURE_3D_INFO >	mFeature_infos;
 	size_t mNumbPoints, mNumCameras;
 };
 

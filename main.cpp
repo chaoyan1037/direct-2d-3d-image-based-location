@@ -1,8 +1,10 @@
 //mian function for image location
-#include<fstream>
-#include<iostream>
-
-#include<opencv2/opencv.hpp>
+#include <fstream>
+#include <iostream>
+#include <set>
+#include <utility>
+#include <vector>
+#include <opencv2/opencv.hpp>
 
 #include "picture.h"
 #include "visualwords.h"
@@ -12,28 +14,25 @@
 using namespace cv;
 using namespace std;
 
+
+
 int main(int * argc, char** argv)
 {
-	cv::Mat mat(10, 1, CV_8UC1);
-	mat.row(5) = 1;
-	cout << mat;
-	return 1;
-
-	ALL_PICTURES pic_db("E:/Dubrovnik6K", "list.db.txt");
-	pic_db.LoadAllPictures();
-
-	PARSE_BUNDLER parse_bundler;
-	parse_bundler.ParseBundlerFile("E:/Dubrovnik6K/bundle/bundle.db.out");
-	parse_bundler.LoadCameraInfo(pic_db);
-
+	
+	
 	PICTURE pic;
-	pic.LoadKeyPointAndDes("E:/Dubrovnik6K/query/_sml_2738520609.key");
+	pic.LoadKeyPointAndDes("D:/bundlerSIFT/examples/statue/IMG_0451.key");
+	//pic.LoadKeyPointAndDes("E:/Dubrovnik6K/query/_sml_2738520609.key");
 	
-	//load visual words and build the index
-	VISUALWORDS_HANDLER vw_handler;
-	vw_handler.LoadDBVisualWords();
-	vw_handler.BuildIndex();
-	
+
+	/*	VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path,
+		const std::string &list_txt,
+		const std::string &bundle_file)
+	*/
+	VISUALWORDS_3DPOINT_HANDLER vw_3d_point_handler("D:/bundlerSIFT/examples/statue/",
+		"list.txt", "D:/bundlerSIFT/examples/statue/bundle/bundle.out");
+	vw_3d_point_handler.Init();
+
 	//vector<unsigned char*>  query_des;
 	//for (int i = 0; i < 1; i++)
 	//{
