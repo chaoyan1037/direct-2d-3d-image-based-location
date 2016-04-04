@@ -9,6 +9,7 @@
 *log
 *sdf
 
+*.cluster
 visual_words_sift_100k.cluster
 
 loca_yan*

@@ -18,13 +18,6 @@ using namespace std;
 
 int main(int * argc, char** argv)
 {
-	
-	
-	PICTURE pic;
-	pic.LoadKeyPointAndDes("D:/bundlerSIFT/examples/statue/IMG_0451.key");
-	//pic.LoadKeyPointAndDes("E:/Dubrovnik6K/query/_sml_2738520609.key");
-	
-
 	/*	VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path,
 		const std::string &list_txt,
 		const std::string &bundle_file)

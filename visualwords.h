@@ -62,6 +62,7 @@ private:
 
 class VISUALWORDS_3DPOINT_HANDLER
 {
+
 public:
 	VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path, 
 		const std::string &list_txt,
@@ -78,21 +79,24 @@ public:
 	//build the visual words's index of 3d point 
 	bool BuildIndex3DPoints();
 
-	//visual words list to rank the 3d point according to the length of its view list
-	bool ViewListIsShort(const std::pair<int, int> & p1, const std::pair<int, int> & p2){
-		return p1.second < p2.second;
-	}
-	std::set< std::pair<int, int>, decltype(ViewListIsShort)*> mViewListSet(decltype(ViewListIsShort)*);
-
-	//3d point each visual words containing
-	//pair int:the id of 3d point, int:  the length of its view_list
-	std::vector < std::set< std::pair<int, int>, decltype(ViewListIsShort)*> * > mVisualwords_index_3d;
+	//3d point each visual words contain
+	//pair int:the id of 3d point, int: the length of the view list of this 3d point
+	struct  compareFunc;
+	std::vector < std::set<std::pair<int, int>, compareFunc> > mVisualwords_index_3d;
 
 	ALL_PICTURES			mPic_db;
 	PARSE_BUNDLER			mParse_bundler;
-
 	VISUALWORDS_HANDLER		mVW_handler;
 
+	//std::set< std::pair<int, int>, ViewListIsShort> mViewListSet;
+	//self define compare function, compare which view list is shorter
+	static struct  compareFunc
+	{
+		bool operator()(const std::pair<int, int> & p1, const std::pair<int, int> & p2) const
+		{
+			return p1.second < p2.second;
+		}
+	};
 };
 
 #endif

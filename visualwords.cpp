@@ -51,7 +51,7 @@ bool VISUALWORDS_HANDLER::KnnSearch(const vector<unsigned char*>& query_des,
 	cv::Mat& indices, cv::Mat& dists, int knn)
 {
 	//convert the query format into cv::Mat 
-	cv::Mat	query_des_mat(query_des.size(), 128, CV_32FC1);
+	cv::Mat	query_des_mat((int)query_des.size(), 128, CV_32FC1);
 	double time1 = (double)GetTickCount();
 #pragma omp parallel for
 	for (int i = 0; i < query_des.size(); i++)
@@ -63,7 +63,7 @@ bool VISUALWORDS_HANDLER::KnnSearch(const vector<unsigned char*>& query_des,
 		
 	}
 	time1 = (double)GetTickCount() - time1;
-	cout << "visual words knn search time: " << time1 << endl;
+	//cout << "visual words knn search time: " << time1 << endl;
 
 	mVW_index.knnSearch(query_des_mat, indices, dists,
 		knn, cv::flann::SearchParams(64));//check 64
@@ -75,10 +75,11 @@ bool VISUALWORDS_HANDLER::KnnSearch(const vector<unsigned char*>& query_des,
 //build the visual words's index of 3d point 
 bool VISUALWORDS_3DPOINT_HANDLER::BuildIndex3DPoints()
 {
+	int num_visualwords = mVW_handler.GetNumVisualWords();
 	mVisualwords_index_3d.clear();
-	mVisualwords_index_3d.resize(mVW_handler.GetNumVisualWords());
+	mVisualwords_index_3d.resize(num_visualwords);
 
-//#pragma omp parallel for
+#pragma omp parallel for
 	for (int i = 0; i < mParse_bundler.mFeature_infos.size(); i++)
 	{
 		cv::Mat indices, dists;
@@ -87,8 +88,8 @@ bool VISUALWORDS_3DPOINT_HANDLER::BuildIndex3DPoints()
 		for (int j = 0; j < indices.rows; j++)
 		{
 			int vw_index_id = indices.ptr<int>(j)[0];
-			assert(vw_index_id <= mVW_handler.GetNumVisualWords());
-			//mVisualwords_index_3d[vw_index_id].insert(make_pair(i, (int)mParse_bundler.mFeature_infos[i].mView_list.size()));
+			assert(vw_index_id < num_visualwords);
+			mVisualwords_index_3d[vw_index_id].insert(make_pair(i, (int)mParse_bundler.mFeature_infos[i].mView_list.size()));
 		}
 	}
 
