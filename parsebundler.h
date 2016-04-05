@@ -106,8 +106,7 @@ public:
 	//copy constructor
 	FEATURE_3D_INFO(const FEATURE_3D_INFO& feature_3d)
 	{
-		mView_list.clear();
-		mDescriptor.clear();
+		ClearData();
 
 		mView_list.resize(feature_3d.mView_list.size());
 		mDescriptor.resize(feature_3d.mDescriptor.size());
@@ -128,15 +127,15 @@ public:
 	}
 
 	//destructor
-	~FEATURE_3D_INFO()
-	{
-		mDescriptor.clear();
-		mView_list.clear();
-	}
+	~FEATURE_3D_INFO(){ClearData();}
 
 	//clear all the data
 	void ClearData()
 	{
+		for (auto& ptr : mDescriptor){
+			//release the memory allocate by new
+			if (!ptr) { delete[] ptr; ptr = nullptr; }
+		}
 		mDescriptor.clear();
 		mView_list.clear();
 	}
@@ -189,7 +188,7 @@ public:
 	//load the .key info from ALL_CAMERA
 	bool LoadCameraInfo(  ALL_PICTURES& all_pics);
 
-	//return the 3d point featrue info
+	//return the 3d point feature info
 	std::vector< FEATURE_3D_INFO > & GetFeature3DInfo();
 
 //private:

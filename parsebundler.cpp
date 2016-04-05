@@ -109,7 +109,7 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 	}
 
 	instream.close();
-
+	return 1;
 }
 
 //load the .key info from ALL_CAMERA
@@ -141,7 +141,7 @@ bool PARSE_BUNDLER::LoadCameraInfo( ALL_PICTURES& all_pics )
 	return 1;
 }
 
-//return the 3d point featrue info
+//return the 3d point feature info
 std::vector< FEATURE_3D_INFO > & PARSE_BUNDLER::GetFeature3DInfo()
 {
 	return mFeature_infos;

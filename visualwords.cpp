@@ -103,6 +103,9 @@ void VISUALWORDS_3DPOINT_HANDLER::Init()
 
 	mParse_bundler.ParseBundlerFile();
 	mParse_bundler.LoadCameraInfo(mPic_db);
+	
+	//after load bundler and execute LoadCameraInfo, release the mPic_db
+	mPic_db.ClearAllPictures();
 
 	mVW_handler.LoadDBVisualWords();
 	mVW_handler.BuildIndex();

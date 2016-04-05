@@ -56,12 +56,16 @@ private:
 
 	//database visual words(100k * 128float , sift) 
 	cv::Mat	mDB_visualwords;
-	
-	
 };
 
 class VISUALWORDS_3DPOINT_HANDLER
 {
+private:
+	//build the visual words's index of 3d point 
+	bool BuildIndex3DPoints();
+
+	//database image, used to init the 3d point
+	ALL_PICTURES			mPic_db;
 
 public:
 	VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path, 
@@ -74,17 +78,17 @@ public:
 
 	~VISUALWORDS_3DPOINT_HANDLER(){};
 
+	//inti, load database image, 3d points, and visual words
 	void Init();
 
-	//build the visual words's index of 3d point 
-	bool BuildIndex3DPoints();
+	//Do query for a single picture
+
 
 	//3d point each visual words contain
 	//pair int:the id of 3d point, int: the length of the view list of this 3d point
 	struct  compareFunc;
 	std::vector < std::set<std::pair<int, int>, compareFunc> > mVisualwords_index_3d;
 
-	ALL_PICTURES			mPic_db;
 	PARSE_BUNDLER			mParse_bundler;
 	VISUALWORDS_HANDLER		mVW_handler;
 

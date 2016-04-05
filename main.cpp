@@ -26,11 +26,12 @@ int main(int * argc, char** argv)
 		"list.txt", "D:/bundlerSIFT/examples/statue/bundle/bundle.out");
 	vw_3d_point_handler.Init();
 
-	//vector<unsigned char*>  query_des;
-	//for (int i = 0; i < 1; i++)
-	//{
-	//	query_des.push_back(pic.GetDescriptor()[i]);
-	//}
+
+	//define query images:
+	ALL_PICTURES pic_query("D:/bundlerSIFT/examples/statue/", "list_query.txt");
+	pic_query.LoadAllPictures();
+
+
 
 	//Mat indices, dists;
 	//vw_handler.KnnSearch(query_des, indices, dists);

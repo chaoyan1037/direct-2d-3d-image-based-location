@@ -119,7 +119,9 @@ bool ALL_PICTURES::LoadAllPictures()
 //clear all picture
 bool ALL_PICTURES::ClearAllPictures()
 {
-	mAll_pictures.clear();
+	for (auto &pic : mAll_pictures){
+		pic.ClearData();
+	}
 	return 1;
 }
 
