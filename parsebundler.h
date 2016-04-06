@@ -6,9 +6,10 @@
 /* for each 3D point, find the list of 2d feature points */
 /************************************************************************/
 #include <set>
-#include<fstream>
-#include<vector>
-#include<omp.h>
+#include <fstream>
+#include <vector>
+#include <omp.h>
+
 
 #include "bundlercamera.h"
 #include "picture.h"
@@ -48,12 +49,12 @@ public:
 
 	void Set3DCoordinate(float x_, float y_, float z_)
 	{
-		x = x_, y = y_, z = z_;
+		x = x_; y = y_; z = z_;
 	}
 
 	void Set3DPointColor(unsigned char r_, unsigned char g_, unsigned char b_)
 	{
-		r = r_, g = g_, b = b_;
+		r = r_; g = g_; b = b_;
 	}
 
 	float x, y, z;//coordinates
@@ -146,29 +147,27 @@ public:
 	class to parse bundler file
 	also able to load the .key files of all cameras
 */
+
 class PARSE_BUNDLER
 {
-
 public:
-	//friend class, VISUALWORDS_HANDLER can access the 
-	//std::vector< FEATURE_3D_INFO > mFeature_infos;
-	friend class VISUALWORDS_HANDLER;
-
 	//constructor
 	PARSE_BUNDLER();
 
 	~PARSE_BUNDLER();
 
 	//set the bundler file name
-	bool SetBundleFileName(const std::string &s);
+	void SetBundleFileName(const std::string &s){
+		mBundle_file = s;
+	}
 
 	//get the number of 3d points in reconstruction
-	size_t GetNumPoints(){
+	size_t GetNumPoints() const{
 		return mNumbPoints;
 	}
 
 	//get the number of cameras
-	size_t GetNumCameras(){
+	size_t GetNumCameras() const{
 		return mNumCameras;
 	}
 
@@ -189,9 +188,12 @@ public:
 	bool LoadCameraInfo(  ALL_PICTURES& all_pics);
 
 	//return the 3d point feature info
-	std::vector< FEATURE_3D_INFO > & GetFeature3DInfo();
+	const std::vector< FEATURE_3D_INFO >& GetFeature3DInfo() const
+	{
+		return mFeature_infos;
+	}
 
-//private:
+private:
 
 	std::string						mBundle_file;
 	std::vector< BUNDLER_CAMERA >	mCameras;

@@ -8,6 +8,17 @@
 
 using namespace std;
 
+//calculate the distance between the two sift descriptor
+int CalculateSIFTDistanceSquared(const unsigned char* d1, const unsigned char* d2)
+{
+	int dif, distsq = 0;
+	for (int i = 0; i < 128; i++){
+		dif = d1[i] - d2[i];
+		distsq += dif*dif;
+	}
+	return distsq;
+}
+
 /****** for class PICTURE ****/
 //clear all the data, delete the pointer content
 void PICTURE::ClearData()
@@ -57,13 +68,13 @@ bool PICTURE::LoadKeyPointAndDes(std::string des_filename)
 }
 
 //return the key points
-std::vector<SIFT_KeyPoint>& PICTURE::GetFeaturePoint()
+const std::vector<SIFT_KeyPoint>& PICTURE::GetFeaturePoint() const
 {
 	return mFeature_points;
 }
 
 //return the descriptor, store as chars
-std::vector<unsigned char*>& PICTURE::GetDescriptor()
+const std::vector<unsigned char*>& PICTURE::GetDescriptor() const
 {
 	return mDescriptors;
 }
@@ -75,6 +86,9 @@ std::vector<unsigned char*>& PICTURE::GetDescriptor()
 //load all picture from the list
 bool ALL_PICTURES::LoadAllPictures()
 {
+	//first clear all pictures if already loaded
+	ClearAllPictures();
+
 	ifstream infile(mDBpath +'/'+ mPictureListFile, std::ios::in);
 	if (!infile.is_open()){
 		cout << "Open list file fail: " << mPictureListFile << endl;
@@ -122,10 +136,11 @@ bool ALL_PICTURES::ClearAllPictures()
 	for (auto &pic : mAll_pictures){
 		pic.ClearData();
 	}
+	mAll_pictures.clear();
 	return 1;
 }
 
-std::vector<PICTURE>& ALL_PICTURES::GetAllPictures()
+const std::vector<PICTURE>& ALL_PICTURES::GetAllPictures() const
 {
 	return mAll_pictures;
 }

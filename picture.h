@@ -10,6 +10,9 @@
 *
 */
 
+//calculate the distance between the two sift descriptor
+int CalculateSIFTDistanceSquared(const unsigned char* d1, const unsigned char* d2);
+
 struct SIFT_KeyPoint
 {
 	float x;//origin is the left-up corner
@@ -29,16 +32,17 @@ public:
 	bool LoadKeyPointAndDes(std::string des_filename);
 	
 	//the num of feature points of the picture
-	size_t PointsNum(){ return mFeature_points.size(); };
+	size_t PointsNum() const
+	{ return mFeature_points.size(); } ;
 
 	//clear all the data
 	void ClearData();
 
 	//return the key points
-	std::vector<SIFT_KeyPoint>& GetFeaturePoint();
+	const std::vector<SIFT_KeyPoint>& GetFeaturePoint() const;
 
 	//return the descriptor, store as chars
-	std::vector<unsigned char*>& GetDescriptor();
+	const std::vector<unsigned char*>& GetDescriptor() const;
 
 private:
 
@@ -70,7 +74,7 @@ public:
 	bool SetParameters(const std::string& model_path, const std::string &list);
 
 	//return all pictures
-	std::vector<PICTURE>& GetAllPictures();
+	const std::vector<PICTURE>& GetAllPictures() const;
 
 private:
 

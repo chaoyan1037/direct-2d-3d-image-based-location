@@ -115,7 +115,7 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 //load the .key info from ALL_CAMERA
 bool PARSE_BUNDLER::LoadCameraInfo( ALL_PICTURES& all_pics )
 {
-	std::vector<PICTURE>& picture = all_pics.GetAllPictures();
+	const std::vector<PICTURE>& picture = all_pics.GetAllPictures();
 
 #pragma omp parallel for
 	for (int i = 0; i < mNumbPoints; ++i)
@@ -138,18 +138,5 @@ bool PARSE_BUNDLER::LoadCameraInfo( ALL_PICTURES& all_pics )
 		}
 	}
 
-	return 1;
-}
-
-//return the 3d point feature info
-std::vector< FEATURE_3D_INFO > & PARSE_BUNDLER::GetFeature3DInfo()
-{
-	return mFeature_infos;
-}
-
-//set the bundler file name
-bool PARSE_BUNDLER::SetBundleFileName(const std::string &s)
-{
-	mBundle_file = s;
 	return 1;
 }
