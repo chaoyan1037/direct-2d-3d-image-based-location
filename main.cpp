@@ -31,7 +31,7 @@ int main(int * argc, char** argv)
 	ALL_PICTURES pic_query("D:/bundlerSIFT/examples/statue/", "list_query.txt");
 	pic_query.LoadAllPictures();
 
-
+	vw_3d_point_handler.LocateSinglePicture(pic_query.GetAllPictures()[0]);
 
 	//Mat indices, dists;
 	//vw_handler.KnnSearch(query_des, indices, dists);

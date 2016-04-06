@@ -24,7 +24,7 @@ int CalculateSIFTDistanceSquared(const unsigned char* d1, const unsigned char* d
 void PICTURE::ClearData()
 {
 #pragma omp parallel for
-	for (int i = 0; i < mKeypoint_num; ++i){
+	for (int i = 0; i < mDescriptors.size(); ++i){
 		if (!mDescriptors[i]) delete[] mDescriptors[i];
 		mDescriptors[i] = 0;
 	}

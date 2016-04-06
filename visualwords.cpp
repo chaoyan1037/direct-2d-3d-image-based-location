@@ -1,5 +1,4 @@
 #include <fstream>
-#include <limits>
 #include <algorithm>
 #include <windows.h>
 
@@ -146,7 +145,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 	mFeature_3d_point_correspondence_mask.clear();
 	mFeature_3d_point_correspondence_mask.resize(picture.GetDescriptor().size(), true);
 
-	const std::vector<unsigned char*>&pic_feat_desc = picture.GetDescriptor();
+	const std::vector<unsigned char*>& pic_feat_desc = picture.GetDescriptor();
 
 	cv::Mat indices, dists;
 	if (mFeature_visual_word_correspondence_ratio_test){
@@ -179,8 +178,8 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 		mFeature_3d_point_correspondence_mask[i] = false;
 
 		//the squared distance of current feature to 3d point's feature
-		int min_distance_squared[2] = { INT_MAX };
-		int min_distance_3d_point_index[2] = { -1 };
+		int min_distance_squared[2] = { 100000000, 100000000 };
+		int min_distance_3d_point_index[2] = {-1, -1};
 
 		int vw_index_id = indices.ptr<int>(i)[0];
 		
@@ -194,7 +193,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 			//for each 3d point, find all its descriptors
 			//find one smallest distance represent this 3d point
 			//only record the squared distance, since the index is index_3d_point
-			int min_distance_squared_each_3d_point = INT_MAX;
+			int min_distance_squared_each_3d_point = 100000000;
 			for (int j = 0; j < _3d_point_feat_desc.size(); j++)
 			{
 				int distsq_temp = CalculateSIFTDistanceSquared(pic_feat_desc[i], _3d_point_feat_desc[j]);
@@ -219,14 +218,12 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 		//after find two putative matched 3d points do ratio test     
 		//mFeature_3d_point_correspondence_ratio_test_thres
 		//Check whether closest distance is less than 0.7 of second.
-		if (10 * 10 * min_distance_squared[0] < 7 * 7 * min_distance_squared[1])
+		if (min_distance_3d_point_index[1] > 0 && 10 * 10 * min_distance_squared[0] < 7 * 7 * min_distance_squared[1])
 		{
 			mFeature_3d_point_correspondence_mask[i] = true;
 			mFeature_3d_point_correspondence.push_back(make_pair(i, min_distance_3d_point_index[0]));
 			//check if there are enough correspondence and stop now
-			if (++cnt_matched_feature >= mMaxNumberCorrespndence){
-				return 1;
-			}
+			if (++cnt_matched_feature >= mMaxNumberCorrespndence){return 1;}
 		}
 
 	}
