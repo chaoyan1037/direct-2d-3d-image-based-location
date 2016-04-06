@@ -170,10 +170,12 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 	//if #matched feature exceeds the threshold then stop find matched 3d point
 	int cnt_matched_feature = 0;
 
-//#pragma  omp parallel for
+#pragma omp parallel for shared(cnt_matched_feature)
 	//for matched visual words, find feature's matched 3d points
-	for (int i = 0; i < indices.rows && mFeature_3d_point_correspondence_mask[i]; i++)
+	for (int i = 0; i < indices.rows; i++)
 	{
+		if (!mFeature_3d_point_correspondence_mask[i] || cnt_matched_feature > mMaxNumberCorrespndence) continue;
+
 		//first let the mask be false
 		mFeature_3d_point_correspondence_mask[i] = false;
 
@@ -223,7 +225,8 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 			mFeature_3d_point_correspondence_mask[i] = true;
 			mFeature_3d_point_correspondence.push_back(make_pair(i, min_distance_3d_point_index[0]));
 			//check if there are enough correspondence and stop now
-			if (++cnt_matched_feature >= mMaxNumberCorrespndence){return 1;}
+			#pragma omp atomic 
+			++cnt_matched_feature;
 		}
 
 	}
