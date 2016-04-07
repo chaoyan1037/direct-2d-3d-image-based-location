@@ -36,7 +36,7 @@ public:
 	bool BuildIndex();
 
 	//knn search  k=2;
-	bool KnnSearch(const std::vector<unsigned char*>& query_des,
+	bool KnnSearch(const std::vector<SIFT_Descriptor>& query_des,
 		cv::Mat& indices, cv::Mat& dists, int knn = 2) ;
 
 private:

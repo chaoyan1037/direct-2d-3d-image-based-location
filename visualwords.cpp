@@ -50,7 +50,7 @@ bool VISUALWORDS_HANDLER::BuildIndex()
 }
 
 //do knn search  k=2;
-bool VISUALWORDS_HANDLER::KnnSearch(const vector<unsigned char*>& query_des,
+bool VISUALWORDS_HANDLER::KnnSearch(const vector<SIFT_Descriptor>& query_des,
 	cv::Mat& indices, cv::Mat& dists, int knn)
 {
 	//convert the query format into cv::Mat 
@@ -59,9 +59,9 @@ bool VISUALWORDS_HANDLER::KnnSearch(const vector<unsigned char*>& query_des,
 #pragma omp parallel for
 	for (int i = 0; i < query_des.size(); i++)
 	{
-		for (int j = 0; j < 128; j++)
+		for (int j = 0; j < query_des[i].legth; j++)
 		{
-			query_des_mat.ptr<float>(i)[j] = query_des[i][j];
+			query_des_mat.ptr<float>(i)[j] = query_des[i].ptrDesc[j];
 		}
 		
 	}
@@ -141,11 +141,11 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 //Do query for a single picture
 bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 {
+	auto& pic_feat_desc = picture.GetDescriptor();
+
 	mFeature_3d_point_correspondence.clear();
 	mFeature_3d_point_correspondence_mask.clear();
-	mFeature_3d_point_correspondence_mask.resize(picture.GetDescriptor().size(), true);
-
-	const std::vector<unsigned char*>& pic_feat_desc = picture.GetDescriptor();
+	mFeature_3d_point_correspondence_mask.resize(pic_feat_desc.size(), true);
 
 	cv::Mat indices, dists;
 	if (mFeature_visual_word_correspondence_ratio_test){
@@ -190,7 +190,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 		{
 			int index_3d_point = pair_3d_point.first;
 			const FEATURE_3D_INFO &feat_3d_info = mParse_bundler.GetFeature3DInfo()[index_3d_point];
-			const std::vector<unsigned char*>& _3d_point_feat_desc = feat_3d_info.mDescriptor;
+			const std::vector<SIFT_Descriptor>& _3d_point_feat_desc = feat_3d_info.mDescriptor;
 			
 			//for each 3d point, find all its descriptors
 			//find one smallest distance represent this 3d point
@@ -198,7 +198,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 			int min_distance_squared_each_3d_point = 100000000;
 			for (int j = 0; j < _3d_point_feat_desc.size(); j++)
 			{
-				int distsq_temp = CalculateSIFTDistanceSquared(pic_feat_desc[i], _3d_point_feat_desc[j]);
+				int distsq_temp = CalculateSIFTDistanceSquared(pic_feat_desc[i].ptrDesc, _3d_point_feat_desc[j].ptrDesc);
 				min_distance_squared_each_3d_point = std::min(distsq_temp, min_distance_squared_each_3d_point);
 			}
 

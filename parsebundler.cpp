@@ -4,6 +4,7 @@
 #include <string.h>
 #include <fstream>
 #include <iostream>
+#include <utility>
 
 using namespace std;
 
@@ -115,7 +116,7 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 //load the .key info from ALL_CAMERA
 bool PARSE_BUNDLER::LoadCameraInfo( ALL_PICTURES& all_pics )
 {
-	const std::vector<PICTURE>& picture = all_pics.GetAllPictures();
+	auto& picture = all_pics.GetAllPictures();
 
 #pragma omp parallel for
 	for (int i = 0; i < mNumbPoints; ++i)
@@ -130,11 +131,10 @@ bool PARSE_BUNDLER::LoadCameraInfo( ALL_PICTURES& all_pics )
 			view.scale			= keypoint_vec[view.key].scale;
 			view.orientation	= keypoint_vec[view.key].orientation;
 
-			//mDescriptor[128*j - 128*j+127]  the jth descriptor
+			//mDescriptor: the jth descriptor
 			auto & descriptor = picture[mFeature_infos[i].mView_list[j].camera].GetDescriptor();
 
-			mFeature_infos[i].mDescriptor[j] = new unsigned char[128];
-			memcpy_s(mFeature_infos[i].mDescriptor[j], 128, descriptor[view.key], 128);
+			mFeature_infos[i].mDescriptor[j] = std::move(descriptor[view.key]);
 		}
 	}
 

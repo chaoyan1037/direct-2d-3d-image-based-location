@@ -95,7 +95,7 @@ public:
 	POINT3D mPoint;
 	std::vector<VIEW> mView_list;
 	//each single descriptor save as char*
-	std::vector<unsigned char*> mDescriptor;
+	std::vector<SIFT_Descriptor> mDescriptor;
 
 	//constructor
 	FEATURE_3D_INFO()
@@ -133,10 +133,6 @@ public:
 	//clear all the data
 	void ClearData()
 	{
-		for (auto& ptr : mDescriptor){
-			//release the memory allocate by new
-			if (!ptr) { delete[] ptr; ptr = nullptr; }
-		}
 		mDescriptor.clear();
 		mView_list.clear();
 	}
@@ -185,7 +181,7 @@ public:
 	bool ParseBundlerFile();
 
 	//load the .key info from ALL_CAMERA
-	bool LoadCameraInfo(  ALL_PICTURES& all_pics);
+	bool LoadCameraInfo( ALL_PICTURES& all_pics);
 
 	//return the 3d point feature info
 	const std::vector< FEATURE_3D_INFO >& GetFeature3DInfo() const

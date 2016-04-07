@@ -6,6 +6,8 @@
 #include <omp.h>
 #include <windows.h>
 
+int SIFT_Descriptor::legth = 128;
+
 using namespace std;
 
 //calculate the distance between the two sift descriptor
@@ -20,14 +22,10 @@ int CalculateSIFTDistanceSquared(const unsigned char* d1, const unsigned char* d
 }
 
 /****** for class PICTURE ****/
+
 //clear all the data, delete the pointer content
 void PICTURE::ClearData()
 {
-#pragma omp parallel for
-	for (int i = 0; i < mDescriptors.size(); ++i){
-		if (!mDescriptors[i]) delete[] mDescriptors[i];
-		mDescriptors[i] = 0;
-	}
 	mDescriptors.clear();
 	mFeature_points.clear();
 }
@@ -43,42 +41,39 @@ bool PICTURE::LoadKeyPointAndDes(std::string des_filename)
 
 	infile >> mKeypoint_num >> mDes_length;
 
-	int cnt = mKeypoint_num;
-	while (cnt--)
+	mFeature_points.clear();
+	mFeature_points.resize(mKeypoint_num);
+	mDescriptors.clear();
+	mDescriptors.resize(mKeypoint_num);
+
+	for (int cnt = 0; cnt < mKeypoint_num; cnt++)
 	{
-		SIFT_KeyPoint sift_keypt;
+		auto& sift_keypt = mFeature_points[cnt];
 		infile >> sift_keypt.x >> sift_keypt.y 
 			>> sift_keypt.scale >> sift_keypt.orientation;
 
-		mFeature_points.push_back(sift_keypt);
+		//directly operate on the desc
+		//do not use temp variable and then push_back it into the vector
+		//since program end the temp variable will release the newed memory 
+		auto& sift_desc = mDescriptors[cnt];
+		int des_temp = 0;
 
-		int des_temp;
-		unsigned char*ptr_des = new unsigned char[mDes_length];
+		sift_desc.ptrDesc = new unsigned char[sift_desc.legth];
+		if (sift_desc.ptrDesc == nullptr || mDes_length != sift_desc.legth){
+			std::cerr << "new error(picture.cpp, line56)" << std::endl;
+			abort();
+		}
 		//read the descriptor
-		for (int i = 0; i < mDes_length; ++i)
+		for (int i = 0; i < sift_desc.legth; ++i)
 		{
 			infile >> des_temp;
-			ptr_des[i] = (unsigned char)des_temp;
+			sift_desc.ptrDesc[i] = (unsigned char)des_temp;
 		}
-		mDescriptors.push_back(ptr_des);
 	}
 
 	infile.close();
 	return 1;
 }
-
-//return the key points
-const std::vector<SIFT_KeyPoint>& PICTURE::GetFeaturePoint() const
-{
-	return mFeature_points;
-}
-
-//return the descriptor, store as chars
-const std::vector<unsigned char*>& PICTURE::GetDescriptor() const
-{
-	return mDescriptors;
-}
-
 
 
 
@@ -118,11 +113,7 @@ bool ALL_PICTURES::LoadAllPictures()
 	for (int i = 0; i < pic_filename.size(); i++)
 	{
 		//load a picture
-		PICTURE pic;
-		pic.LoadKeyPointAndDes(mDBpath + "/" + pic_filename[i]);
-
-		//save the pic into the vector
-		mAll_pictures[i]=pic;
+		mAll_pictures[i].LoadKeyPointAndDes(mDBpath + "/" + pic_filename[i]);
 	}
 
 	time1 = (double)GetTickCount() - time1;
@@ -130,20 +121,7 @@ bool ALL_PICTURES::LoadAllPictures()
 	return 1;
 }
 
-//clear all picture
-bool ALL_PICTURES::ClearAllPictures()
-{
-	for (auto &pic : mAll_pictures){
-		pic.ClearData();
-	}
-	mAll_pictures.clear();
-	return 1;
-}
 
-const std::vector<PICTURE>& ALL_PICTURES::GetAllPictures() const
-{
-	return mAll_pictures;
-}
 
 //set the string contents
 bool ALL_PICTURES::SetParameters(const std::string& model_path, const std::string &list)
