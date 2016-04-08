@@ -7,11 +7,8 @@
 */
 #include<opencv2/opencv.hpp>
 
-class BUNDLER_CAMERA
+struct  BUNDLER_CAMERA
 {
-public:
-
-
 	cv::Matx33d	rotation;
 	cv::Vec3d	translation;
 	double		focal_length;

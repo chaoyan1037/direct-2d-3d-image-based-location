@@ -45,7 +45,8 @@ bool VISUALWORDS_HANDLER::BuildIndex()
 		cout << "visual words database is empty." << endl;
 		return 0;
 	}
-	mVW_index.build(mDB_visualwords, cv::flann::KDTreeIndexParams(4), cvflann::FLANN_DIST_L2);
+	//use only one kd-tree
+	mVW_index.build(mDB_visualwords, cv::flann::KDTreeIndexParams(1), cvflann::FLANN_DIST_L2);
 	return 1;
 }
 
@@ -93,7 +94,6 @@ bool VISUALWORDS_3DPOINT_HANDLER::BuildIndex3DPoints()
 		for (int j = 0; j < indices.rows; j++)
 		{
 			int vw_index_id = indices.ptr<int>(j)[0];
-			assert(vw_index_id < num_visualwords);
 			mVisualwords_index_3d[vw_index_id].insert(make_pair(i, (int)feature_info[i].mView_list.size()));
 		}
 	}
@@ -162,7 +162,10 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 	}
 	else { mVW_handler.KnnSearch(pic_feat_desc, indices, dists, 1); }
 
-	assert(pic_feat_desc.size() == indices.rows);
+	if (pic_feat_desc.size() != indices.rows){
+		std::cerr << "error:visualwords.cpp line 166" << std::endl;
+		abort();
+	}
 
 	//feature matched 3d point
 	std::vector<int> feat_matched_3d_point(pic_feat_desc.size(), -1);
