@@ -85,14 +85,20 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="bundlercamera.cpp" />
+    <ClCompile Include="Epnp\epnp.cpp" />
+    <ClCompile Include="geometry.cpp" />
     <ClCompile Include="parsebundler.cpp" />
+    <ClCompile Include="Timer\timer.cpp" />
     <ClCompile Include="visualwords.cpp" />
     <ClCompile Include="picture.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="bundlercamera.h" />
+    <ClInclude Include="Epnp\epnp.h" />
+    <ClInclude Include="geometry.h" />
     <ClInclude Include="parsebundler.h" />
+    <ClInclude Include="Timer\timer.h" />
     <ClInclude Include="visualwords.h" />
     <ClInclude Include="picture.h" />
   </ItemGroup>

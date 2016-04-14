@@ -69,8 +69,7 @@ bool VISUALWORDS_HANDLER::KnnSearch(const vector<SIFT_Descriptor>& query_des,
 	time1 = (double)GetTickCount() - time1;
 	//cout << "visual words knn search time: " << time1 << endl;
 	
-	mVW_index.knnSearch(query_des_mat, indices, dists,
-		knn, cv::flann::SearchParams(64, 0.0f, true));//check 64
+	mVW_index.knnSearch(query_des_mat, indices, dists, knn, cv::flann::SearchParams(10));//path number
 	
 	return 1;
 }
@@ -113,8 +112,8 @@ VISUALWORDS_3DPOINT_HANDLER::VISUALWORDS_3DPOINT_HANDLER(const std::string &bund
 	mFeature_visual_word_correspondence_ratio_test = false;
 	mFeature_visual_word_correspondence_ratio_test_thres = 0.7f;
 
-	mMaxNumberCorrespndence = 100;
-
+	mMaxNumberCorrespondence = 100;
+	mMinNumberCorrespondence = 12;
 }
 
 //initiation work, load the picture and 3d points and build the index
@@ -138,8 +137,10 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 }
 
 
-//Do query for a single picture
-bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
+//Do query for a single picture and find correspondence between 
+//its 2d features and database 3d points
+//success return 1, else return 0
+bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 {
 	auto& pic_feat_desc = picture.GetDescriptor();
 
@@ -177,7 +178,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 	//for matched visual words, find feature's matched 3d points
 	for (int i = 0; i < indices.rows; i++)
 	{
-		if (!mFeature_3d_point_correspondence_mask[i] || cnt_matched_feature > mMaxNumberCorrespndence) continue;
+		if (!mFeature_3d_point_correspondence_mask[i] || cnt_matched_feature > mMaxNumberCorrespondence) continue;
 
 		//first let the mask be false
 		mFeature_3d_point_correspondence_mask[i] = false;
@@ -232,6 +233,22 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture)
 			++cnt_matched_feature;
 		}
 
+	}
+
+	//no enough correspondence, location fail
+	if (cnt_matched_feature < mMinNumberCorrespondence){
+		mFeature_3d_point_correspondence.clear();
+		mFeature_3d_point_correspondence_mask.clear();
+		return 0;
+	}
+	else return 1;
+}
+
+//the public function to locate a single picture
+bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture){
+	//0: can not find enough 2d-3d correspondence
+	if (0 == FindCorrespondence(picture)){
+		return 0;
 	}
 
 	return 1;

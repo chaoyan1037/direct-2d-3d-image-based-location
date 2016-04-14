@@ -1,15 +1,17 @@
-//mian function for image location
+//main function for image location
 #include <fstream>
 #include <iostream>
 #include <set>
 #include <utility>
 #include <vector>
-#include <opencv2/opencv.hpp>
+#include <opencv/cv.h>
 
+#include "geometry.h"
 #include "picture.h"
 #include "visualwords.h"
 #include "bundlercamera.h"
 #include "parsebundler.h"
+
 
 using namespace cv;
 using namespace std;
@@ -18,6 +20,15 @@ using namespace std;
 
 int main(int * argc, char** argv)
 {
+	Matx34d P;
+	P = P.randn(1.0, 1.0);
+	std::pair<cv::Vec2d, cv::Vec3d> match;
+	match.first = Vec2d(200.0, 400.0);
+	match.second = Vec3d(1.0, 2.0, 3.0);
+
+	Geometry geo;
+	cout<<geo.ComputeReprojectionError(P, match);
+	return 1;
 	/*	VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path,
 		const std::string &list_txt,
 		const std::string &bundle_file)

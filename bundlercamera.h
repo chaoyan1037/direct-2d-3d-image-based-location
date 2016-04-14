@@ -16,6 +16,14 @@ struct  BUNDLER_CAMERA
 
 	size_t		id;
 	int			width, height;
+	BUNDLER_CAMERA(){
+		rotation.zeros();
+		translation.zeros();
+		focal_length = 0;
+		k1 = k2 = 0;
+		id = 0;
+		width = height = 0;
+	}
 };
 
 #endif

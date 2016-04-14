@@ -60,7 +60,12 @@ private:
 
 class VISUALWORDS_3DPOINT_HANDLER
 {
+//this should be private, public for debug
+//private:
 public:
+	//find 2d-3d corresponding in Function LocateSinglePicture()
+	bool FindCorrespondence(const PICTURE& picture);
+
 	//build the visual words's index of 3d point 
 	bool BuildIndex3DPoints();
 
@@ -74,6 +79,7 @@ public:
 	//float  mFeature_3d_point_correspondence_ratio_test_thres;
 
 	//whether do ratio test when find feature's visual word?
+	//in general, it is unnecessary since we just find the nearest one.
 	bool mFeature_visual_word_correspondence_ratio_test;
 	//if do ratio test, the ratio test threshold
 	float mFeature_visual_word_correspondence_ratio_test_thres;
@@ -85,9 +91,14 @@ public:
 	//int: the index of feature; int: the index of 3d point
 	std::vector< std::pair<int, int> > mFeature_3d_point_correspondence;
 
-	//threshold the max number of matched feature and 3d point
+	//threshold: the max number of matched feature and 3d point
 	//when reach this threshold then stop to calculate camera pose
-	int mMaxNumberCorrespndence;
+	int mMaxNumberCorrespondence;
+
+	//threshold: the minimal number of matched correspondence
+	//if there are not enough 2d-3d correspondence, localize fail.
+	int mMinNumberCorrespondence;
+
 
 public:
 
