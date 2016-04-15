@@ -19,7 +19,7 @@
 using namespace std;
 using namespace cv;
 
-#define TSET_GEOMETRY
+//#define TSET_GEOMETRY
 
 void Geometry::SetIntrinsicParameter(float f, int u, int v){
 	K(0, 0) = f;	K(0, 1) = 0.0;	K(0, 2) = u;
@@ -273,9 +273,9 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 	int index[12];
 	int index_best[12];
 	int stop = 0;
-
+	int RANSACnum = 0;
 #pragma omp parallel for shared(prosac_time, stop, inlier_num_best, index_best)
-	for (int RANSACnum = 0; RANSACnum < 4000; RANSACnum++){
+	for (RANSACnum = 0; RANSACnum < 4000; RANSACnum++){
 		if (stop) { continue; }
 		//DLT: every time generate 6 pair
 		for (int j = 0; j < 6; j++){
@@ -322,7 +322,6 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 			}
 		}
 		//update the best inlier num
-
 		if (inlier_num > inlier_num_best){
 #pragma omp critical
 			if (inlier_num > inlier_num_best){
@@ -351,7 +350,7 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 		if (bNormalized){
 			for (int i = 0; i < match_num; i++){
 				bInlier_[i] = 0;
-				if (ComputeReprojectionError(P_inlier, match_2d_3d_normalized[i]) < 10.0){
+				if (ComputeReprojectionError(P_inlier, match_2d_3d[i]) < 10.0){
 					inlier_match_list.push_back(match_2d_3d_normalized[i]);
 					bInlier_[i] = 1;
 				}
@@ -387,14 +386,55 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 		return 0;
 	}
 
-	cv::Vec4d	TransVec4;
-	cv::decomposeProjectionMatrix(P, K_estimated, R, TransVec4);
-	std::cout << "Estimate K is: " << K_estimated << std::endl;
+	P_inlier = P;
+	cv::Matx33d KR, K_RQ, R_RQ;
+	for (int i = 0; i < 3; i++){
+		for (int j = 0; j < 3; j++)
+			KR(i, j) = P(i, j);
+	}
+	if (M3Det(KR) < 0){
+		//cout << "||KR|| < 0, P: " << P << endl;
+		//KR = -1.0*KR;
+		P = -P;
+		//P_inlier = -P_inlier;
+		//cout << "P=-P, P: " << P << endl;
+		//cout << "less than 0" << endl;
+	}
+	//cout << "KR :" <<endl<< KR << endl;
+	//cv::RQDecomp3x3(KR, K_RQ, R_RQ);
+	//P = (1.0 / K_RQ(2, 2))*P;
+	//K_RQ = (1.0 / K_RQ(2, 2))*K_RQ;
+	//cout << "K_RQ: " << endl << K_RQ << endl;
+	//cout << "R_RQ: " << endl << R_RQ << endl;
+	//cv::Matx31d T_RQ = K_RQ.inv()*(P.col(3));
+	//cout << "T_RQ: " << T_RQ.t() << endl;
 
-	TransVec4 = (1.0 / TransVec4[3])*TransVec4;
-	T[0] = TransVec4[0];
-	T[1] = TransVec4[1];
-	T[2] = TransVec4[2];
+	//P = P_inlier;
+	cv::Vec4d	camera_position;
+	// The function computes a decomposition of a projection matrix into
+	// a calibration  and a rotation matrix and the position of a camera.
+	cv::decomposeProjectionMatrix(P, K_estimated, R, camera_position);
+	//P = 1.0 / K_estimated(2, 2)*P;
+	K_estimated = 1.0 / K_estimated(2,2)*K_estimated;
+	//std::cout << "estimated K is: " <<endl<< K_estimated << std::endl;
+	//cout << "determinent of K: " << M3Det(K_estimated) << endl;
+
+	camera_position = (1.0 / camera_position[3])*camera_position;
+	cv::Matx31d t;
+	t(0, 0) = camera_position[0];
+	t(1, 0) = camera_position[1];
+	t(2, 0) = camera_position[2];
+	// P = R*X+t  convert X in the world-coordinate into the P in the camera coordiante
+	// for camera center P = 0 = R*X+t£¬ then X = -R*t is the center is world coordinate;
+	t = -R*t;
+
+	//cout << "translation: " << t.t() << endl;
+	//t = K_estimated.inv()*P.col(3);
+
+	T[0] = t(0, 0);
+	T[1] = t(1, 0);
+	T[2] = t(2, 0);
+	//cout << "estimate t: " << T << endl;
 
 	return inlier_num_last;
 }
@@ -447,6 +487,8 @@ void Geometry::CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ma
 }
 
 //normalize when use DLT method
+//mat_2d convert normalized 2d points to original pixel points, point2d_pixel = mat2d*point2d_normalized;
+//mat_3d convert original 3d points to the normalized 3d points,  
 bool Geometry::Normalize(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d_normalized,
 	cv::Matx33d& mat_2d, cv::Matx44d& mat_3d)
@@ -507,8 +549,8 @@ const double uc = 320;
 const double vc = 240;
 const double fu = 800;
 const double fv = 800;
-const int n = 100;
-const double noise = 10;
+const int n = 200;
+const double noise = 1.5;
 
 double rand(double min, double max)
 {
@@ -588,7 +630,18 @@ void Geometry::TestGeometry(){
 		match_list.push_back(make_pair(Vec2d(u, v), Vec3d(Xw, Yw, Zw)));
 	}
 	double R_est[3][3], t_est[3];
-	double err2 = PnP.compute_pose(R_est, t_est);
+	double err2 = PnP.compute_pose(R_est, t_est); 
+	cout << "epnp estimated R: " << endl;
+	for(int i=0; i<3; i++){
+		for(int j=0; j<3; j++){
+			cout<<R_est[i][j]<<" ";
+		}
+		cout<<endl;
+	}
+	cout<<"epnp estimated t: " << endl;
+	cout<<t_est[0]<<" "<<t_est[1]<<" "<<t_est[2]<<endl; 
+
+#if 0
 	cout << "'True reprojection error':"
 		<< PnP.reprojection_error(R_est, t_est) << endl;
 	
@@ -618,17 +671,52 @@ void Geometry::TestGeometry(){
 	}
 	err = err / match_list.size();
 	cout << "geo calculated err: " << err << endl;
+#endif
 	/********************************************************/
+#if 0
 	CM_Compute(match_list, P);
 	
 	P = (1.0 / P(2, 3))*P;
 	P = 6 * P;
 	cout << "geo calculated P: " << P << endl;
-
+#endif
 	/********************************************************/
+#if 0
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_list_normalized;
 	cv::Matx33d mat2d;
 	cv::Matx44d mat3d;
 
 	Normalize(match_list, match_list_normalized, mat2d, mat3d);
+	cout << "original matched" << endl;
+	for (auto& e : match_list){
+		cout << e.first[0] << " " << e.first[1] << " "
+			<< e.second[0] << " " << e.second[1] << " " << e.second[2] << endl;
+	}
+
+	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_n;
+	for (auto& e : match_list_normalized){
+		Vec3d v3(e.first[0], e.first[1], 1.0);
+		v3 = mat2d*v3;
+		Vec4d v4(e.second[0], e.second[1], e.second[2], 1.0);
+		v4 = mat3d.inv()*v4;
+		match_n.push_back(make_pair(Vec2d(v3[0], v3[1]), Vec3d(v4[0], v4[1], v4[2])));
+		//match_n.push_back(make_pair(Vec2d(v3[0] / v3[2], v3[1] / v3[2]), Vec3d(v4[0] / v4[3], v4[1] / v4[3], v4[2] / v4[3])));
+	}
+	cout << " recover matched" << endl;
+	for (auto& e : match_n){
+		cout << e.first[0] << " " << e.first[1] << " "
+			<< e.second[0] << " " << e.second[1] << " " << e.second[2] << endl;
+	}
+#endif
+	/********************************************************/
+
+	
+	cv::Matx33d	K_dlt;
+	cv::Matx33d	R_dlt;
+	cv::Vec3d	t_dlt;
+	vector<bool> bInlier;
+
+	ComputePoseDLT(match_list, R_dlt, t_dlt, bInlier, K_dlt);
+	cout << "DLT R: " << R_dlt << endl;
+	cout << "DLT t: " << t_dlt << endl;
 }
