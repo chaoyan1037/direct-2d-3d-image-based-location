@@ -40,7 +40,7 @@ public:
 				m(0,2) * (m(1,0) * m(2,1) - m(1,1) * m(2,0));
 	}
 
-	inline cv::Matx33d Inv(const cv::Matx33d &m){
+	/*inline cv::Matx33d Inv(const cv::Matx33d &m){
 		cv::Matx33d madjoin;
 		double delta = M3Det(m);
 		assert(delta<-0.000001 || delta>0.000001);
@@ -58,12 +58,16 @@ public:
 		madjoin *= (1.0/delta);
 
 		return madjoin.t();
-	}
+	}*/
 
 	cv::Matx33d K;
 	cv::Matx33d K_Inv;
 	void SetIntrinsicParameter(float f, int u, int v);
 	void SetK(const cv::Matx33d& Ki);
+
+	//just for test the geometry module
+	void TestGeometry();
+	
 };
 
 
