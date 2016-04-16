@@ -7,10 +7,10 @@
 #include <opencv/cv.h>
 
 #include "geometry.h"
-#include "picture.h"
 #include "visualwords.h"
-#include "bundlercamera.h"
-#include "parsebundler.h"
+#include "PreProcess/picture.h"
+#include "PreProcess/bundlercamera.h"
+#include "PreProcess/parsebundler.h"
 
 
 using namespace cv;

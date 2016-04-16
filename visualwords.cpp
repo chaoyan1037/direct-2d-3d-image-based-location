@@ -3,7 +3,7 @@
 #include <windows.h>
 
 #include "visualwords.h"
-#include "picture.h"
+#include "PreProcess/picture.h"
 
 using namespace std;
 

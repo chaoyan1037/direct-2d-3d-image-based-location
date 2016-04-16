@@ -9,7 +9,7 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 
-#include "parsebundler.h"
+#include "PreProcess/parsebundler.h"
 
 
 class VISUALWORDS_HANDLER
