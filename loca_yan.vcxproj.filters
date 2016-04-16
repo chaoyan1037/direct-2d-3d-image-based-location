@@ -19,21 +19,15 @@
     <Filter Include="Source Files\Timer">
       <UniqueIdentifier>{5b9e0f8a-3979-4d4e-ac86-42d9446396b4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\PreProcess">
+      <UniqueIdentifier>{c1d7a836-0916-4486-ae46-5d9622db3102}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="visualwords.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="picture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="parsebundler.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="bundlercamera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="geometry.cpp">
@@ -45,18 +39,18 @@
     <ClCompile Include="Timer\timer.cpp">
       <Filter>Source Files\Timer</Filter>
     </ClCompile>
+    <ClCompile Include="PreProcess\bundlercamera.cpp">
+      <Filter>Source Files\PreProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="PreProcess\parsebundler.cpp">
+      <Filter>Source Files\PreProcess</Filter>
+    </ClCompile>
+    <ClCompile Include="PreProcess\picture.cpp">
+      <Filter>Source Files\PreProcess</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="visualwords.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="picture.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="parsebundler.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="bundlercamera.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="geometry.h">
@@ -67,6 +61,15 @@
     </ClInclude>
     <ClInclude Include="Timer\timer.h">
       <Filter>Source Files\Timer</Filter>
+    </ClInclude>
+    <ClInclude Include="PreProcess\bundlercamera.h">
+      <Filter>Source Files\PreProcess</Filter>
+    </ClInclude>
+    <ClInclude Include="PreProcess\parsebundler.h">
+      <Filter>Source Files\PreProcess</Filter>
+    </ClInclude>
+    <ClInclude Include="PreProcess\picture.h">
+      <Filter>Source Files\PreProcess</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

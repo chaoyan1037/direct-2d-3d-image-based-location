@@ -55,7 +55,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_SCL_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <OpenMPSupport>false</OpenMPSupport>
+      <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -73,7 +73,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <OpenMPSupport>false</OpenMPSupport>
+      <OpenMPSupport>true</OpenMPSupport>
       <DisableSpecificWarnings>4819</DisableSpecificWarnings>
     </ClCompile>
     <Link>
@@ -84,23 +84,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="bundlercamera.cpp" />
     <ClCompile Include="Epnp\epnp.cpp" />
     <ClCompile Include="geometry.cpp" />
-    <ClCompile Include="parsebundler.cpp" />
+    <ClCompile Include="PreProcess\bundlercamera.cpp" />
+    <ClCompile Include="PreProcess\parsebundler.cpp" />
+    <ClCompile Include="PreProcess\picture.cpp" />
     <ClCompile Include="Timer\timer.cpp" />
     <ClCompile Include="visualwords.cpp" />
-    <ClCompile Include="picture.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="bundlercamera.h" />
     <ClInclude Include="Epnp\epnp.h" />
     <ClInclude Include="geometry.h" />
-    <ClInclude Include="parsebundler.h" />
+    <ClInclude Include="PreProcess\bundlercamera.h" />
+    <ClInclude Include="PreProcess\parsebundler.h" />
+    <ClInclude Include="PreProcess\picture.h" />
     <ClInclude Include="Timer\timer.h" />
     <ClInclude Include="visualwords.h" />
-    <ClInclude Include="picture.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

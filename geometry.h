@@ -23,13 +23,13 @@ public:
 	int ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
 		cv::Matx33d &R, cv::Vec3d &T, std::vector<bool>& binlier, cv::Matx33d & recovered_K);
 
-	void CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d, 
+	bool CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d, 
 		cv::Matx34d& P);
 
 	//normalize when use DLT method
 	bool Normalize(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d, 
 		std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d_normalized,
-		cv::Matx33d& mat_2d, cv::Matx44d& mat_3d);
+		cv::Matx33d& mat_2d_inv, cv::Matx44d& mat_3d);
 
 	//Compute pose
 	void ComputePose();

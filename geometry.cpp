@@ -6,15 +6,15 @@
 #include <math.h>
 #include <stdlib.h>
 
+#include <opencv/cv.h>
+#include <opencv2/calib3d.hpp>
+
 #include "geometry.h"
 #include "Timer/timer.h"
 #include "Epnp/epnp.h"
 
-#include <opencv/cv.h>
-#include <opencv2/calib3d.hpp>
-
 //estimate camera pose from 2d-3d correspondence
-//both DLT method and ePnP method
+//both DLT method and ePnP method implemented
 
 using namespace std;
 using namespace cv;
@@ -76,6 +76,7 @@ double Geometry::ComputeReprojectionError(const cv::Matx34d& P, const std::pair<
 }
 
 //compute pose and return the number of inlier and inlier mask
+//epnp need the K parameter
 int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
 	cv::Matx33d &R, cv::Vec3d &T, std::vector<bool>& binlier){
 	//init the rand number generate
@@ -141,28 +142,18 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 		}
 
 		cv::Matx33d KR(K*R);
-		P.col(0) = KR.col(0);
-		P.col(1) = KR.col(1);
-		P.col(2) = KR.col(2);
-		cout << P << endl;
+		cv::Vec3d	KT(K*T);
 		for(int i = 0; i < 3; i++){
 			for(int j = 0; j < 3; j++){
 				P(i, j) = KR(i, j);
 			}
+			P(i, 3) = KT[i];
 		}
-		cout << P << endl;
-		cv::Vec3d KT(K*T);
-		P.col(3) = KT;
-		cout << P << endl;
-		P(0, 3) = KT[0];
-		P(1, 3) = KT[1];
-		P(2, 3) = KT[2];
-		P(3, 3) = 1.0;
-		cout << P << endl;
+		//cout << P << endl;
 
 		inlier_num = 0;
 		//check if it is an inlier
-		for (auto _match : match_2d_3d){
+		for (auto& _match : match_2d_3d){
 			if (ComputeReprojectionError(P, _match) < 10.0){
 				inlier_num++;
 			}
@@ -219,6 +210,7 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 			v  = match_2d_3d[inlier_match_index_list[i]].first[1];
 			PnP.add_correspondence(Xw, Yw, Zw, u, v);
 		}
+
 		double R_est[3][3], T_est[3];
 		err2 = PnP.compute_pose(R_est, T_est);
 		for (int i = 0; i < 3; i++){
@@ -227,22 +219,21 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 			}
 			T[i] = T_est[i];
 		}
+
 		cv::Matx33d KR(K*R);
-		P_inlier.col(0) = KR.col(0);
-		P_inlier.col(1) = KR.col(1);
-		P_inlier.col(2) = KR.col(2);
-
 		cv::Vec3d KT(K*T);
-		P_inlier(0, 3) = KT[0];
-		P_inlier(1, 3) = KT[1];
-		P_inlier(2, 3) = KT[2];
-		P_inlier(3, 3) = 1.0;
-
+		for (int i = 0; i < 3; i++){
+			for (int j = 0; j < 3; j++){
+				P_inlier(i, j) = KR(i,j);
+			}
+			P_inlier(i,3) = KT[i];
+		}
+		
 		inlier_num_last = inlier_num_cur;
 		binlier = bInlier_;
 	}
-	std::cout << "Inlier match num: " << inlier_num_last << std::endl;
-	std::cout << "Reprojection error: " << err2 << std::endl;
+	std::cout << "epnp inlier match num: " << inlier_num_last << std::endl;
+	std::cout << "epnp reprojection error: " << err2 << std::endl;
 	return inlier_num_last;
 }
 
@@ -259,24 +250,23 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 	if (match_num < 12){ return 0; std::cout << "not enough match_num" << std::endl; }
 
 	cv::Matx34d P, P_inlier;
-	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> minimal_set;
+	
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_2d_3d_normalized;
-	cv::Matx33d	mat_2d_scaling;
+	cv::Matx33d	mat_2d_scaling_inv;
 	cv::Matx44d mat_3d_scaling;
 	bool bNormalized = 0;
 
-	bNormalized = Normalize(match_2d_3d, match_2d_3d_normalized, mat_2d_scaling, mat_3d_scaling);
+	bNormalized = Normalize(match_2d_3d, match_2d_3d_normalized, mat_2d_scaling_inv, mat_3d_scaling);
 
 	int prosac_time = 12<match_num?12:match_num;
-	int inlier_num = 0;
 	int inlier_num_best = 0;
-	int index[12];
-	int index_best[12];
 	int stop = 0;
-	int RANSACnum = 0;
-#pragma omp parallel for shared(prosac_time, stop, inlier_num_best, index_best)
-	for (RANSACnum = 0; RANSACnum < 4000; RANSACnum++){
+	
+#pragma omp parallel for shared(stop, prosac_time, inlier_num_best, P_inlier)
+	for (int RANSACnum = 0; RANSACnum < 4000; RANSACnum++){
 		if (stop) { continue; }
+
+		int index[16];
 		//DLT: every time generate 6 pair
 		for (int j = 0; j < 6; j++){
 			int n = rand() % prosac_time;
@@ -288,53 +278,60 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 				}
 			}
 			if (isRepeated){ --j; }
-			else { index[j] = n; }
+			else { index[j] = n; 
+			if (n >= match_num - 1)
+				cout << "n: " << n << "match: " << match_num << endl;
+				stop++;
+			}
 		}
 		if (prosac_time < match_num){
 #pragma omp atomic
 			prosac_time++;
 		}
-		
+		//cout << " after select seed" << endl;
+
+		std::vector<std::pair<cv::Vec2d, cv::Vec3d>> minimal_set;
 		minimal_set.clear();
 		if (bNormalized){
 			for (int i = 0; i < 6; i++){
-				minimal_set.push_back(match_2d_3d_normalized[i]);
+				minimal_set.push_back(match_2d_3d_normalized[index[i]]);
 			}
 		}
 		else
 		{
 			for (int i = 0; i < 6; i++){
-				minimal_set.push_back(match_2d_3d[i]);
+				minimal_set.push_back(match_2d_3d[index[i]]);
 			}
 		}
-
+		//cout << " after select minimal set" << endl;
+		//cout << " minimal set size: " << minimal_set.size() << endl;
 		//compute P
-		CM_Compute(minimal_set, P);
+		if (6 != minimal_set.size()){ cout << " minimal set size: " << minimal_set.size() << endl; }
+		if (CM_Compute(minimal_set, P) == 0){ continue; }
 		if (bNormalized){
-			P = mat_2d_scaling*P*mat_3d_scaling;
+			P = mat_2d_scaling_inv*P*mat_3d_scaling;
 		}
-
-		inlier_num = 0;
+		//cout << " after s CM_Compute" << endl;
+		int inlier_num = 0;
 		//count inlier number
 		for (int i = 0; i < match_num; i++){
 			if (ComputeReprojectionError(P, match_2d_3d[i]) < 10.0){
 				inlier_num++;
 			}
 		}
+		//cout << " after count inlier" << endl;
+
 		//update the best inlier num
 		if (inlier_num > inlier_num_best){
 #pragma omp critical
 			if (inlier_num > inlier_num_best){
 				inlier_num_best = inlier_num;
 				P_inlier = P;
-				for (int i = 0; i > 6; i++){
-					index_best[i] = index[i];
-				}
 			}
 		}
+		//cout << " after update best inlier" << endl;
 		//stop?
 		if (inlier_num > 100 || inlier_num > inlier_num_thres&&inlier_num > 12){
-#pragma omp atomic
 			stop++;
 		}
 	}
@@ -371,11 +368,12 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 		if (inlier_num_cur <= inlier_num_last){ break; }
 		
 		//otherwise refine the R T
-		CM_Compute(inlier_match_list, P);
-		if (bNormalized){
-			P = mat_2d_scaling*P*mat_3d_scaling;
-		}
+		if (0 == CM_Compute(inlier_match_list, P)){ break; }
 
+		if (bNormalized){
+			P = mat_2d_scaling_inv*P*mat_3d_scaling;
+		}
+		P_inlier = P;
 		inlier_num_last = inlier_num_cur;
 		binlier = bInlier_;
 	}
@@ -440,9 +438,16 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 }
 
 //calculated P is the right null space unit vector corresponding to the A's minial sigular value 
-void Geometry::CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
+bool Geometry::CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
 	cv::Matx34d& P){
+	//cout << "enter CM_Compute" << endl;
+
 	int row_num = (int)match_2d_3d.size();
+	if (row_num < 6){
+		std::cout << "match_2d_3d num is less than 6. geometry.cpp line 442" << endl; 
+		return 0;
+	}
+
 	cv::Mat A(row_num * 3, 12, CV_64FC1);
 
 	for (int i = 0; i < row_num; i++){
@@ -468,22 +473,23 @@ void Geometry::CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ma
 		ptrA[4] = x*X;	ptrA[5] = x*Y;	ptrA[6] = x*Z;	ptrA[7] = x;
 		ptrA[8] = 0.0;	ptrA[9] = 0.0;	ptrA[10] = 0.0; ptrA[11] = 0.0;
 	}
+	//cout << " after construct A " << endl;
 
 	cv::Mat	w, u, vt;
-	cv::Mat res(1, 12, CV_64FC1);
 	cv::SVD::compute(A, w, u, vt);
-
-	vt.row(11).copyTo(res);
 
 	for (int i = 0; i < 3; i++){
 		for (int j = 0; j < 4; j++){
-			P(i, j) = res.ptr<double>(0)[4*i+j];
+			P(i, j) = vt.ptr<double>(11)[4 * i + j];
 		}
 	}
+	//cout << "leave CM_Compute" << endl;
 #ifdef TSET_GEOMETRY
 	cout << "vt last row: " << vt.row(11) << endl;
 	cout << "geo calculated P: " << P << endl;
 #endif // TSET_GEOMETRY
+
+	return 1;
 }
 
 //normalize when use DLT method
@@ -491,7 +497,7 @@ void Geometry::CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ma
 //mat_3d convert original 3d points to the normalized 3d points,  
 bool Geometry::Normalize(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d_normalized,
-	cv::Matx33d& mat_2d, cv::Matx44d& mat_3d)
+	cv::Matx33d& mat_2d_inv, cv::Matx44d& mat_3d)
 {
 	cv::Vec2d pt1, center_2d(0.0, 0.0);
 	cv::Vec3d pt2, center_3d(0.0, 0.0, 0.0);
@@ -519,14 +525,15 @@ bool Geometry::Normalize(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& mat
 	if (fabs(scale1) < 1e-12 || fabs(scale2) < 1e-12){
 		return false;
 	}
-	scale1 = 1.41421 / scale1;
-	scale2 = 1.73205 / scale2;
+	scale1 = 1.41421356 / scale1;
+	scale2 = 1.73205080 / scale2;
 
 	for (size_t i = 0; i < match_2d_3d_normalized.size(); i++){
 		match_2d_3d_normalized[i].first = match_2d_3d_normalized[i].first*scale1;
 		match_2d_3d_normalized[i].second = match_2d_3d_normalized[i].second*scale2;
 	}
-
+	 
+	auto &mat_2d = mat_2d_inv;
 	mat_2d = mat_2d.zeros();
 	mat_3d = mat_3d.zeros();
 
@@ -549,8 +556,8 @@ const double uc = 320;
 const double vc = 240;
 const double fu = 800;
 const double fv = 800;
-const int n = 200;
-const double noise = 1.5;
+const int n = 100;
+const double noise = 3.0;
 
 double rand(double min, double max)
 {
@@ -716,7 +723,16 @@ void Geometry::TestGeometry(){
 	cv::Vec3d	t_dlt;
 	vector<bool> bInlier;
 
-	ComputePoseDLT(match_list, R_dlt, t_dlt, bInlier, K_dlt);
+	//for (int i = 0; i < 1000; i++)
+	cout << "DLT inlier: " << ComputePoseDLT(match_list, R_dlt, t_dlt, bInlier, K_dlt) << endl;
 	cout << "DLT R: " << R_dlt << endl;
 	cout << "DLT t: " << t_dlt << endl;
+
+	/*******************************************************/
+#if 0
+	cout << "epnp inlier: " << ComputePoseEPnP(match_list, R_dlt, t_dlt, bInlier) << endl;
+	cout << "epnp R: " << R_dlt << endl;
+	cout << "epnp t: " << t_dlt << endl;
+#endif
+
 }

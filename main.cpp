@@ -4,6 +4,7 @@
 #include <set>
 #include <utility>
 #include <vector>
+
 #include <opencv/cv.h>
 
 #include "geometry.h"
