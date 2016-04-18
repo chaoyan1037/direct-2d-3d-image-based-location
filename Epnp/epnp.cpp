@@ -26,9 +26,64 @@
 //   either expressed or implied, of the FreeBSD Project.
 
 #include <iostream>
+#include <cstring>
 using namespace std;
 
 #include "epnp.h"
+
+//copy constructor
+epnp::epnp(const epnp& e)
+{
+	maximum_number_of_correspondences = e.maximum_number_of_correspondences;
+	number_of_correspondences = e.number_of_correspondences;
+	if (maximum_number_of_correspondences > 0){
+		pws = new double[3 * maximum_number_of_correspondences];
+		us = new double[2 * maximum_number_of_correspondences];
+		alphas = new double[4 * maximum_number_of_correspondences];
+		pcs = new double[3 * maximum_number_of_correspondences];
+	}
+	else{
+		pws = 0;
+		us = 0;
+		alphas = 0;
+		pcs = 0;
+	}
+	if (number_of_correspondences > 0){
+		const int length_unit = sizeof(double)* number_of_correspondences;
+		std::memcpy(pws, e.pws, 3 * length_unit);
+		std::memcpy(us, e.us, 2 * length_unit);
+		std::memcpy(alphas, e.alphas, 4 * length_unit);
+		std::memcpy(pcs, e.pcs, 3 * length_unit);
+	}
+}
+
+//copy assignment
+epnp& epnp::operator = (const epnp& e)
+{
+	if (this != &e){
+		if (maximum_number_of_correspondences < e.maximum_number_of_correspondences){
+			if (pws != 0) delete[] pws;
+			if (us != 0) delete[] us;
+			if (alphas != 0) delete[] alphas;
+			if (pcs != 0) delete[] pcs;
+
+			maximum_number_of_correspondences = e.maximum_number_of_correspondences;
+			pws = new double[3 * maximum_number_of_correspondences];
+			us = new double[2 * maximum_number_of_correspondences];
+			alphas = new double[4 * maximum_number_of_correspondences];
+			pcs = new double[3 * maximum_number_of_correspondences];
+		}
+		number_of_correspondences = e.number_of_correspondences;
+		if (number_of_correspondences > 0){
+			const int length_unit = sizeof(double)* number_of_correspondences;
+			std::memcpy(pws, e.pws, 3 * length_unit);
+			std::memcpy(us, e.us, 2 * length_unit);
+			std::memcpy(alphas, e.alphas, 4 * length_unit);
+			std::memcpy(pcs, e.pcs, 3 * length_unit);
+		}
+	}
+	return *this;
+}
 
 epnp::epnp(void)
 {
@@ -80,6 +135,11 @@ void epnp::reset_correspondences(void)
 
 void epnp::add_correspondence(double X, double Y, double Z, double u, double v)
 {
+  if (number_of_correspondences >= maximum_number_of_correspondences){
+	  std::cout << "correspondence already max number" << std::endl;
+	  return;
+  }
+
   pws[3 * number_of_correspondences    ] = X;
   pws[3 * number_of_correspondences + 1] = Y;
   pws[3 * number_of_correspondences + 2] = Z;

@@ -17,8 +17,8 @@
 //estimate camera pose from 2d-3d correspondence
 //both DLT method and ePnP method implemented
 
-using namespace std;
-using namespace cv;
+using std::cout;
+using std::endl;
 
 //#define TSET_GEOMETRY
 
@@ -83,26 +83,34 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 	//init the rand number generate
 	srand(int(time(0)));
 
-	int match_num = (int)match_2d_3d.size();
-	int inlier_num_thres = (match_num+1) >> 1;
-
+	const int match_num = (int)match_2d_3d.size();
+	
 	std::cout << "match_num when compute pose is: " << match_num << std::endl;
 	if (match_num < 12){ return 0; std::cout << "not enough match_num" << std::endl; }
 
+
+	//original epnp class use new and delete , when use OpenMp, you must make sure
+	//there is no copy or assign operation on epnp. so I modify the original epnp class
+	//add the copy assign and copy constructor
 	epnp PnP;
+	//const double uc, const double vc, const double fu, const double fv
 	PnP.set_internal_parameters(K(0, 2), K(1, 2), K(0, 0), K(1, 1));
 	PnP.set_maximum_number_of_correspondences(match_num);
 
 	cv::Matx34d P_inlier;
 	int stop = 0;
 	int inlier_num_best = 0;
-
-#pragma omp parallel for shared(P_inlier, stop, inlier_num_best, match_num)
-	for (int RANSACnum = 0; RANSACnum < 4000; RANSACnum++){
+	omp_set_num_threads(2);
+#pragma omp parallel for shared(P_inlier, stop, inlier_num_best, match_num, match_2d_3d) firstprivate(PnP)
+	for (int RANSACnum = 0; RANSACnum < 4000; RANSACnum++)
+	{
 		if (stop) {continue;}
+
 		int index[6];
-		int prosac_time = (10 + RANSACnum)<match_num?(10 + RANSACnum):(match_num);
-		cout << " one RANSAC start" << endl;
+		int prosac_time = (10 + RANSACnum) < match_num ? (10 + RANSACnum) : (match_num);
+
+		int pid = omp_get_thread_num();
+		std::cout << " RANSAC start: " << pid << std::endl;
 
 		//every time generate 5 pair
 		for (int j = 0; j < 5; j++){
@@ -118,7 +126,7 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 			else { index[j] = n; }
 		}
 
-		cout << " after select seed" << endl;
+		std::cout << " select seed: " << pid << std::endl;
 
 		PnP.reset_correspondences();
 		for (int i = 0; i < 5; i++){
@@ -130,15 +138,17 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 			v  = match_2d_3d[index[i]].first[1];
 			PnP.add_correspondence(Xw, Yw, Zw, u, v);
 		}
+		std::cout << " set correspondence: " << pid << " "<< PnP.get_correspondence_number() << std::endl;
 		double R_est[3][3], T_est[3];
 		PnP.compute_pose(R_est, T_est);
+		std::cout << " compute_pose: " << pid << std::endl;
 		for (int i = 0; i < 3; i++){
 			for (int j = 0; j < 3; j++){
 				R(i, j) = R_est[i][j];
 			}
 			T[i] = T_est[i];
 		}
-		cout << " after  compute_pose" << endl;
+
 
 		cv::Matx34d P;
 		cv::Matx33d KR(K*R);
@@ -152,36 +162,39 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 		//cout << P << endl;
 
 		int inlier_num = 0;
-		//check if it is an inlier
-		for (auto& _match : match_2d_3d){
-			if (ComputeReprojectionError(P, _match) < 10.0){
+		//count inlier number
+		for (int i = 0; i < match_num; i++){
+			if (ComputeReprojectionError(P, match_2d_3d[i]) < 10.0){
 				inlier_num++;
 			}
 		}
-		cout << " after  ComputeReprojectionError" << endl;
+		std::cout << "reprojection error:" << pid << std::endl;
+
 		//check better inlier P 
 		if (inlier_num > inlier_num_best){
 #pragma omp critical
+			if (inlier_num > inlier_num_best)
 			{
-				if (inlier_num > inlier_num_best)
-				{
-					inlier_num_best = inlier_num;
-					P_inlier = P;
-				}
-			}
+				inlier_num_best = inlier_num;
+				P_inlier = P;
+			}	
 		}
+
 		//check if stop RANSAC
+		int inlier_num_thres = (match_num + 1) >> 1;
 		if (inlier_num > 100 || inlier_num > inlier_num_thres&&inlier_num >= 12){
 #pragma omp atomic
-			stop++;
+			++stop;
 		}
-		cout << " one RANSAC end" << endl;
+		std::cout << " one RANSAC end: " << pid <<" "<< RANSACnum << std::endl;
 	}
 
-	vector<int> inlier_match_index_list;
-	vector<bool> bInlier_(match_num, 0);
+	std::cout << " all RANSAC end" << std::endl;
+	std::vector<int> inlier_match_index_list;
+	std::vector<bool> bInlier_(match_num, 0);
 	int inlier_num_last = 0, inlier_num_cur = 0;
 	double err2 = 0.0;
+	std::cout << " start refine" << std::endl;
 	//refine the inlier
 	while (1)
 	{
@@ -197,7 +210,9 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 		inlier_num_cur = (int)inlier_match_index_list.size();
 		//no better then stop
 		if (inlier_num_cur <= inlier_num_last){ break;}
+
 		//otherwise refine the R T
+		assert(inlier_num_cur <= match_num);
 		PnP.reset_correspondences();
 		for (int i = 0; i < inlier_num_cur; i++){
 			double Xw, Yw, Zw, u, v;
@@ -228,10 +243,11 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 		}
 		
 		inlier_num_last = inlier_num_cur;
-		binlier = bInlier_;
+		binlier.resize(match_num);
+		binlier.assign(bInlier_.cbegin(), bInlier_.cend());
 	}
-	std::cout << "epnp inlier match num: " << inlier_num_last << std::endl;
-	std::cout << "epnp reprojection error: " << err2 << std::endl;
+	//std::cout << "epnp inlier match num: " << inlier_num_last << std::endl;
+	//std::cout << "epnp reprojection error: " << err2 << std::endl;
 	return inlier_num_last;
 }
 
@@ -241,9 +257,8 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 	//init the rand number generate
 	srand(int(time(0)));
 
-	int match_num = (int)match_2d_3d.size();
-	int inlier_num_thres = (match_num + 1) >> 1;
-
+	const int match_num = (int)match_2d_3d.size();
+	
 	std::cout << "match_num when compute pose is: " << match_num << std::endl;
 	if (match_num < 12){ return 0; std::cout << "not enough match_num" << std::endl; }
 
@@ -259,7 +274,7 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 	int inlier_num_best = 0;
 	int stop = 0;
 	
-#pragma omp parallel for shared(stop, inlier_num_best, P_inlier, match_num)
+#pragma omp parallel for shared(stop, inlier_num_best, P_inlier, match_num, match_2d_3d)
 	for (int RANSACnum = 0; RANSACnum < 4000; RANSACnum++){
 		if (stop) { continue; }
 		int index[6];
@@ -275,11 +290,7 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 				}
 			}
 			if (isRepeated){ --j; }
-			else { index[j] = n; 
-			if (n >= match_num - 1)
-				cout << "n: " << n << "match: " << match_num << endl;
-				stop++;
-			}
+			else { index[j] = n; }
 		}
 		//cout << " after select seed" << endl;
 
@@ -301,7 +312,7 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 		//cout << " minimal set size: " << minimal_set.size() << endl;
 		//compute P
 		//if (6 != minimal_set.size()){ cout << " minimal set size: " << minimal_set.size() << endl; }
-		if (CM_Compute(minimal_set, P) == 0){ continue; }
+		if (0 == CM_Compute(minimal_set, P)){ continue; }
 		if (bNormalized){
 			P = mat_2d_scaling_inv*P*mat_3d_scaling;
 		}
@@ -325,14 +336,16 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 		}
 		//cout << " after update best inlier" << endl;
 		//stop?
+		int inlier_num_thres = (match_num + 1) >> 1;
 		if (inlier_num > 100 || inlier_num > inlier_num_thres&&inlier_num > 12){
+#pragma omp atomic
 			stop++;
 		}
 	}
 
 	cv::Matx34d P;
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> inlier_match_list;
-	vector<bool> bInlier_(match_num, 0);
+	std::vector<bool> bInlier_(match_num, 0);
 	int inlier_num_last = 0, inlier_num_cur = 0;
 	
 	//refine the inlier
@@ -370,7 +383,7 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 		}
 		P_inlier = P;
 		inlier_num_last = inlier_num_cur;
-		binlier = bInlier_;
+		binlier.assign(bInlier_.cbegin(), bInlier_.cend());
 	}
 
 	std::cout << "inlier match num: " << inlier_num_last << std::endl;
@@ -439,7 +452,7 @@ bool Geometry::CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ma
 
 	int row_num = (int)match_2d_3d.size();
 	if (row_num < 6){
-		std::cout << "match_2d_3d num is less than 6. geometry.cpp line 442" << endl; 
+		std::cout << "match_2d_3d num is less than 6. geometry.cpp line 442" << std::endl;
 		return 0;
 	}
 
@@ -610,7 +623,7 @@ void project_with_noise(double R[3][3], double t[3],
 
 void Geometry::TestGeometry(){
 	srand(time(0));
-	cout << "test geometry function" << endl;
+	std::cout << "test geometry function" << std::endl;
 
 	SetIntrinsicParameter(fu, uc, vc);
 
@@ -629,19 +642,19 @@ void Geometry::TestGeometry(){
 		random_point(Xw, Yw, Zw);
 		project_with_noise(R_true, t_true, Xw, Yw, Zw, u, v);
 		PnP.add_correspondence(Xw, Yw, Zw, u, v);
-		match_list.push_back(make_pair(Vec2d(u, v), Vec3d(Xw, Yw, Zw)));
+		match_list.push_back(std::make_pair(cv::Vec2d(u, v), cv::Vec3d(Xw, Yw, Zw)));
 	}
 	double R_est[3][3], t_est[3];
 	double err2 = PnP.compute_pose(R_est, t_est); 
-	cout << "epnp estimated R: " << endl;
+	std::cout << "epnp estimated R: " << std::endl;
 	for(int i=0; i<3; i++){
 		for(int j=0; j<3; j++){
-			cout<<R_est[i][j]<<" ";
+			std::cout << R_est[i][j] << " ";
 		}
-		cout<<endl;
+		std::cout << std::endl;
 	}
-	cout<<"epnp estimated t: " << endl;
-	cout<<t_est[0]<<" "<<t_est[1]<<" "<<t_est[2]<<endl; 
+	std::cout << "epnp estimated t: " << std::endl;
+	std::cout << t_est[0] << " " << t_est[1] << " " << t_est[2] << std::endl;
 
 #if 0
 	cout << "'True reprojection error':"
@@ -716,19 +729,19 @@ void Geometry::TestGeometry(){
 	cv::Matx33d	K_dlt;
 	cv::Matx33d	R_dlt;
 	cv::Vec3d	t_dlt;
-	vector<bool> bInlier;
+	std::vector<bool> bInlier;
 #if 0
 	for (int i = 0; i < 1000; i++)
-	cout << "DLT inlier: " << ComputePoseDLT(match_list, R_dlt, t_dlt, bInlier, K_dlt) << endl;
-	cout << "DLT R: " << R_dlt << endl;
-	cout << "DLT t: " << t_dlt << endl;
+		std::cout << "DLT inlier: " << ComputePoseDLT(match_list, R_dlt, t_dlt, bInlier, K_dlt) << std::endl;
+	std::cout << "DLT R: " << R_dlt << std::endl;
+	std::cout << "DLT t: " << t_dlt << std::endl;
 #endif
 	/*******************************************************/
 #if 1
-	for (int i = 0; i < 1000; i++)
-	cout << "epnp inlier: " << ComputePoseEPnP(match_list, R_dlt, t_dlt, bInlier) << endl;
-	cout << "epnp R: " << R_dlt << endl;
-	cout << "epnp t: " << t_dlt << endl;
+	for (int i = 0; i < 3000; i++)
+		std::cout << "epnp inlier: " << ComputePoseEPnP(match_list, R_dlt, t_dlt, bInlier) << std::endl;
+	std::cout << "epnp R: " << R_dlt << std::endl;
+	std::cout << "epnp t: " << t_dlt << std::endl;
 #endif
 
 }

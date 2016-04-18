@@ -30,11 +30,26 @@
 
 #include <opencv/cv.h>
 
+/*
+	original epnp class do not have copy assignment or constructor
+	while you should implement copy assignment and constructor when use OpenMP 
+	author: yanchao 2016.04.18
+*/
+
 class epnp {
  public:
   epnp(void);
   ~epnp();
 
+  //copy constructor
+  epnp(const epnp& e);
+
+  //copy assignment
+  epnp& operator=(const epnp& e);
+
+  int get_correspondence_number(){
+	  return number_of_correspondences;
+  }
   void set_internal_parameters(const double uc, const double vc,
 			       const double fu, const double fv);
 
