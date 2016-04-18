@@ -34,6 +34,8 @@ using namespace std;
 //copy constructor
 epnp::epnp(const epnp& e)
 {
+	//set_internal_parameters(double uc, double vc, double fu, double fv)
+	set_internal_parameters(e.uc, e.vc, e.fu, e.fv);
 	maximum_number_of_correspondences = e.maximum_number_of_correspondences;
 	number_of_correspondences = e.number_of_correspondences;
 	if (maximum_number_of_correspondences > 0){
@@ -60,6 +62,7 @@ epnp::epnp(const epnp& e)
 //copy assignment
 epnp& epnp::operator = (const epnp& e)
 {
+	set_internal_parameters(e.uc, e.vc, e.fu, e.fv);
 	if (this != &e){
 		if (maximum_number_of_correspondences < e.maximum_number_of_correspondences){
 			if (pws != 0) delete[] pws;

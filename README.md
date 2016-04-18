@@ -9,15 +9,13 @@ Also, You may new the visual studio project yourself.
 The program use the flann kd-tree in OpenCV(I use OpenCV3.1, 2.4.8 should be fine, but I did not test that)
 Please first install OpenCV library on your PC.
 
-I use the 5-point epnp algorithm to calculate camera pose when intrinsics are availabnle.
-The original epnp implementation do not have copy constructor or copy assignment function,
-this will cause error when use OpenMP, so I implement copy constructor and copy assignment.
-
 To accelerate the processing, simple OpenMP instructors is used.
 To enable OpenMP sopport, choose visual studio project properties -> Configuration Properties
  -> C/C++ -> Language, choose the Open MP Support Yes!
  
- 
+ I use the 5-point epnp algorithm to calculate camera pose when intrinsics are availabnle.
+The original epnp implementation do not have copy constructor or copy assignment function,
+this will cause error when use OpenMP, so I implement copy constructor and copy assignment.
  
  
 original paper: 

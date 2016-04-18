@@ -109,8 +109,8 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 		int index[6];
 		int prosac_time = (10 + RANSACnum) < match_num ? (10 + RANSACnum) : (match_num);
 
-		int pid = omp_get_thread_num();
-		std::cout << " RANSAC start: " << pid << std::endl;
+		//int pid = omp_get_thread_num();
+		//std::cout << " RANSAC start: " << pid << std::endl;
 
 		//every time generate 5 pair
 		for (int j = 0; j < 5; j++){
@@ -126,7 +126,7 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 			else { index[j] = n; }
 		}
 
-		std::cout << " select seed: " << pid << std::endl;
+		//std::cout << " select seed: " << pid << std::endl;
 
 		PnP.reset_correspondences();
 		for (int i = 0; i < 5; i++){
@@ -138,10 +138,10 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 			v  = match_2d_3d[index[i]].first[1];
 			PnP.add_correspondence(Xw, Yw, Zw, u, v);
 		}
-		std::cout << " set correspondence: " << pid << " "<< PnP.get_correspondence_number() << std::endl;
+		//std::cout << " set correspondence: " << pid << " "<< PnP.get_correspondence_number() << std::endl;
 		double R_est[3][3], T_est[3];
 		PnP.compute_pose(R_est, T_est);
-		std::cout << " compute_pose: " << pid << std::endl;
+		//std::cout << " compute_pose: " << pid << std::endl;
 		for (int i = 0; i < 3; i++){
 			for (int j = 0; j < 3; j++){
 				R(i, j) = R_est[i][j];
@@ -168,7 +168,7 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 				inlier_num++;
 			}
 		}
-		std::cout << "reprojection error:" << pid << std::endl;
+		//std::cout << "reprojection error:" << pid << std::endl;
 
 		//check better inlier P 
 		if (inlier_num > inlier_num_best){
@@ -186,15 +186,15 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 #pragma omp atomic
 			++stop;
 		}
-		std::cout << " one RANSAC end: " << pid <<" "<< RANSACnum << std::endl;
+		//std::cout << " one RANSAC end: " << pid <<" "<< RANSACnum << std::endl;
 	}
 
-	std::cout << " all RANSAC end" << std::endl;
+	//std::cout << " all RANSAC end" << std::endl;
 	std::vector<int> inlier_match_index_list;
 	std::vector<bool> bInlier_(match_num, 0);
 	int inlier_num_last = 0, inlier_num_cur = 0;
 	double err2 = 0.0;
-	std::cout << " start refine" << std::endl;
+	//std::cout << " start refine" << std::endl;
 	//refine the inlier
 	while (1)
 	{
@@ -738,7 +738,7 @@ void Geometry::TestGeometry(){
 #endif
 	/*******************************************************/
 #if 1
-	for (int i = 0; i < 3000; i++)
+	for (int i = 0; i < 1000; i++)
 		std::cout << "epnp inlier: " << ComputePoseEPnP(match_list, R_dlt, t_dlt, bInlier) << std::endl;
 	std::cout << "epnp R: " << R_dlt << std::endl;
 	std::cout << "epnp t: " << t_dlt << std::endl;
