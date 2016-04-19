@@ -564,7 +564,7 @@ const double uc = 320;
 const double vc = 240;
 const double fu = 800;
 const double fv = 800;
-const int n = 100;
+const int n = 200;
 const double noise = 3.0;
 
 double rand(double min, double max)
@@ -636,6 +636,12 @@ void Geometry::TestGeometry(){
 	random_pose(R_true, t_true);
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_list;
 
+	std::vector<cv::Point3f> list_points3d;
+	std::vector<cv::Point2f> list_points2d;
+
+	cv::Mat	points_3d(n, 3, CV_64FC1);
+	cv::Mat points_2d(n, 2, CV_64FC1);
+
 	PnP.reset_correspondences();
 	for (int i = 0; i < n; i++) {
 		double Xw, Yw, Zw, u, v;
@@ -643,6 +649,15 @@ void Geometry::TestGeometry(){
 		project_with_noise(R_true, t_true, Xw, Yw, Zw, u, v);
 		PnP.add_correspondence(Xw, Yw, Zw, u, v);
 		match_list.push_back(std::make_pair(cv::Vec2d(u, v), cv::Vec3d(Xw, Yw, Zw)));
+		list_points2d.push_back(cv::Point2f(u, v));
+		list_points3d.push_back(cv::Point3f(Xw, Yw, Zw));
+
+		points_2d.ptr<double>(i)[0] = u;
+		points_2d.ptr<double>(i)[1] = v;
+		points_3d.ptr<double>(i)[0] = Xw;
+		points_3d.ptr<double>(i)[1] = Yw;
+		points_3d.ptr<double>(i)[2] = Zw;
+		
 	}
 	double R_est[3][3], t_est[3];
 	double err2 = PnP.compute_pose(R_est, t_est); 
@@ -738,10 +753,25 @@ void Geometry::TestGeometry(){
 #endif
 	/*******************************************************/
 #if 1
-	for (int i = 0; i < 1000; i++)
-		std::cout << "epnp inlier: " << ComputePoseEPnP(match_list, R_dlt, t_dlt, bInlier) << std::endl;
-	std::cout << "epnp R: " << R_dlt << std::endl;
-	std::cout << "epnp t: " << t_dlt << std::endl;
+	//for (int i = 0; i < 1000; i++)
+	std::cout << "epnp inlier: " << ComputePoseEPnP(match_list, R_dlt, t_dlt, bInlier) << std::endl;
+	std::cout << "epnp R: " << std::endl << R_dlt << std::endl;
+	std::cout << "epnp t: " << std::endl << t_dlt << std::endl;
 #endif
 
+#if 1
+
+	cv::Mat distCoeffs = cv::Mat::zeros(1, 4, CV_64FC1);
+	cv::Mat Rmat, Rvec, Tvec;
+	//inliers contain the indices of inliers in objectPoints and imagePoints .
+	cv::Mat inliers;
+	//cv::solvePnP(points_3d, points_2d, K, distCoeffs, Rvec, Tvec, false, CV_P3P);
+	cv::solvePnPRansac(list_points3d, list_points2d, K, distCoeffs, Rvec, Tvec, false, 4000, 10.0, 0.99, inliers, CV_P3P);
+	//cv::solvePnPRansac(points_3d, points_2d, K, distCoeffs, Rvec, Tvec, false, 4000, 10.0, 0.99, inliers, CV_P3P);
+	cv::Rodrigues(Rvec, Rmat);
+	std::cout << "solvePnPRansac inlier: " << inliers.rows << std::endl;
+	std::cout << "R: " << std::endl << Rmat << std::endl;
+	std::cout << "T: " << std::endl << Tvec << std::endl;
+
+#endif
 }
