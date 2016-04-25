@@ -99,7 +99,6 @@ public:
 	//if there are not enough 2d-3d correspondence, localize fail.
 	int mMinNumberCorrespondence;
 
-
 public:
 
 	VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path, 

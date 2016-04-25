@@ -82,10 +82,10 @@ double Geometry::ComputeReprojectionError(const cv::Matx34d& P, const std::pair<
 			(reprojection[1] - match.first[1])*(reprojection[1] - match.first[1]); 
 }
 
-//compute pose and return the number of inlier and inlier mask
 //epnp need the K parameter
-int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
-	cv::Matx33d &R, cv::Vec3d &T, std::vector<bool>& binlier){
+//compute pose and return the number of inlier and inlier mask 
+int Geometry::ComputePoseEPnP(){
+
 	//init the rand number generate
 	srand(int(time(0)));
 
@@ -93,7 +93,6 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 	
 	std::cout << "match_num when compute pose is: " << match_num << std::endl;
 	if (match_num < 12){ return 0; std::cout << "not enough match_num" << std::endl; }
-
 
 	//original epnp class use new and delete , when use OpenMp, you must make sure
 	//there is no copy or assign operation on epnp. so I modify the original epnp class
@@ -107,7 +106,7 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 	int stop = 0;
 	int inlier_num_best = 0;
 	omp_set_num_threads(2);
-#pragma omp parallel for shared(P_inlier, stop, inlier_num_best, match_num, match_2d_3d) firstprivate(PnP)
+#pragma omp parallel for shared(P_inlier, stop, inlier_num_best, match_num) firstprivate(PnP)
 	for (int RANSACnum = 0; RANSACnum < 4000; RANSACnum++)
 	{
 		if (stop) {continue;}
@@ -206,8 +205,8 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 	{
 		inlier_match_index_list.clear();
 		//find inlier
+		bInlier_.resize(match_num, 0);
 		for (int i = 0; i < match_num; i++){
-			bInlier_[i] = 0;
 			if (ComputeReprojectionError(P_inlier, match_2d_3d[i]) < 10.0){
 				inlier_match_index_list.push_back(i);
 				bInlier_[i] = 1;
@@ -249,8 +248,7 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 		}
 		
 		inlier_num_last = inlier_num_cur;
-		binlier.resize(match_num);
-		binlier.assign(bInlier_.cbegin(), bInlier_.cend());
+		binlier.swap(bInlier_);
 	}
 	//std::cout << "epnp inlier match num: " << inlier_num_last << std::endl;
 	//std::cout << "epnp reprojection error: " << err2 << std::endl;
@@ -258,8 +256,7 @@ int Geometry::ComputePoseEPnP(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>
 }
 
 //Compute the pose use DLT
-int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
-	cv::Matx33d &R, cv::Vec3d &T, std::vector<bool>& binlier, cv::Matx33d & K_estimated){
+int Geometry::ComputePoseDLT(){
 	//init the rand number generate
 	srand(int(time(0)));
 
@@ -269,18 +266,13 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 	if (match_num < 12){ return 0; std::cout << "not enough match_num" << std::endl; }
 
 	cv::Matx34d P_inlier;
-	
-	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_2d_3d_normalized;
-	cv::Matx33d	mat_2d_scaling_inv;
-	cv::Matx44d mat_3d_scaling;
-	bool bNormalized = 0;
 
-	bNormalized = Normalize(match_2d_3d, match_2d_3d_normalized, mat_2d_scaling_inv, mat_3d_scaling);
+	bool bNormalized = Normalize();
 
 	int inlier_num_best = 0;
 	int stop = 0;
 	
-#pragma omp parallel for shared(stop, inlier_num_best, P_inlier, match_num, match_2d_3d)
+#pragma omp parallel for shared(stop, inlier_num_best, P_inlier, match_num)
 	for (int RANSACnum = 0; RANSACnum < 4000; RANSACnum++){
 		if (stop) { continue; }
 		int index[6];
@@ -318,7 +310,7 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 		//cout << " minimal set size: " << minimal_set.size() << endl;
 		//compute P
 		//if (6 != minimal_set.size()){ cout << " minimal set size: " << minimal_set.size() << endl; }
-		if (0 == CM_Compute(minimal_set, P)){ continue; }
+		if (0 == CM_Compute(P, minimal_set)){ continue; }
 		if (bNormalized){
 			P = mat_2d_scaling_inv*P*mat_3d_scaling;
 		}
@@ -358,9 +350,9 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 	while (1)
 	{
 		inlier_match_list.clear();
+		bInlier_.resize(match_num, 0);
 		if (bNormalized){
 			for (int i = 0; i < match_num; i++){
-				bInlier_[i] = 0;
 				if (ComputeReprojectionError(P_inlier, match_2d_3d[i]) < 10.0){
 					inlier_match_list.push_back(match_2d_3d_normalized[i]);
 					bInlier_[i] = 1;
@@ -369,7 +361,6 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 		}
 		else{
 			for (int i = 0; i < match_num; i++){
-				bInlier_[i] = 0;
 				if (ComputeReprojectionError(P_inlier, match_2d_3d[i]) < 10.0){
 					inlier_match_list.push_back(match_2d_3d[i]);
 					bInlier_[i] = 1;
@@ -382,14 +373,14 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 		if (inlier_num_cur <= inlier_num_last){ break; }
 		
 		//otherwise refine the R T
-		if (0 == CM_Compute(inlier_match_list, P)){ break; }
+		if (0 == CM_Compute(P, inlier_match_list)){ break; }
 
 		if (bNormalized){
 			P = mat_2d_scaling_inv*P*mat_3d_scaling;
 		}
 		P_inlier = P;
 		inlier_num_last = inlier_num_cur;
-		binlier.assign(bInlier_.cbegin(), bInlier_.cend());
+		binlier.swap(bInlier_);
 	}
 
 	std::cout << "inlier match num: " << inlier_num_last << std::endl;
@@ -452,8 +443,9 @@ int Geometry::ComputePoseDLT(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>&
 }
 
 //calculated P is the right null space unit vector corresponding to the A's minial sigular value 
-bool Geometry::CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
-	cv::Matx34d& P){
+bool Geometry::CM_Compute(cv::Matx34d& P,
+	const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d)
+{
 	//cout << "enter CM_Compute" << endl;
 
 	int row_num = (int)match_2d_3d.size();
@@ -509,9 +501,7 @@ bool Geometry::CM_Compute(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ma
 //normalize when use DLT method
 //mat_2d convert normalized 2d points to original pixel points, point2d_pixel = mat2d*point2d_normalized;
 //mat_3d convert original 3d points to the normalized 3d points,  
-bool Geometry::Normalize(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
-	std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d_normalized,
-	cv::Matx33d& mat_2d_inv, cv::Matx44d& mat_3d)
+bool Geometry::Normalize()
 {
 	cv::Vec2d pt1, center_2d(0.0, 0.0);
 	cv::Vec3d pt2, center_3d(0.0, 0.0, 0.0);
@@ -547,7 +537,9 @@ bool Geometry::Normalize(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& mat
 		match_2d_3d_normalized[i].second = match_2d_3d_normalized[i].second*scale2;
 	}
 	 
-	auto &mat_2d = mat_2d_inv;
+	auto &mat_2d = mat_2d_scaling_inv;
+	auto &mat_3d = mat_3d_scaling;
+
 	mat_2d = mat_2d.zeros();
 	mat_3d = mat_3d.zeros();
 
@@ -566,9 +558,7 @@ bool Geometry::Normalize(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& mat
 
 //Compute pose use nonlinear optimization(Motion only bundle adjustment)
 //
-int Geometry::RefinePoseSBA(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
-	cv::Matx33d &R_initial, cv::Vec3d &T_initial, const std::vector<bool>& binlier,
-	const bool K_fixed, const cv::Matx33d & K_estimated)
+int Geometry::RefinePoseSBA(const bool K_fixed)
 {
 	sba_warper_data sba;
 	sba.clear();
@@ -673,10 +663,12 @@ inline void Geometry::RotationToQuaterion(const cv::Matx33d& R, double* quaterni
 		quaternion[i+1] = 0.5*t;
 		t = 0.5 / t;
 		w = (R(k, j) - R(j, k))*t;
-		w = w > 0 ? w : -w;
 		quaternion[j+1] = (R(j, i) + R(i, j))*t;
 		quaternion[k+1] = (R(k, i) + R(i, k))*t;
-		cout << " w: " << w << endl;
+		//in case that w is nagtive
+		if (w < 0){
+			w = -w; x = -x; y = -y; z = -z;
+		}
 	}
 }
 
@@ -778,7 +770,8 @@ void Geometry::TestGeometry(){
 
 	double R_true[3][3], t_true[3];
 	random_pose(R_true, t_true);
-	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_list;
+	
+	auto& match_list = match_2d_3d;
 
 	std::vector<cv::Point3d> list_points3d;
 	std::vector<cv::Point2d> list_points2d;
@@ -848,19 +841,16 @@ void Geometry::TestGeometry(){
 #endif
 	/********************************************************/
 #if 0
-	CM_Compute(match_list, P);
+	CM_Compute(P, match_list);
 	
 	P = (1.0 / P(2, 3))*P;
 	P = 6 * P;
 	cout << "geo calculated P: " << P << endl;
 #endif
 	/********************************************************/
-#if 0
-	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_list_normalized;
-	cv::Matx33d mat2d;
-	cv::Matx44d mat3d;
 
-	Normalize(match_list, match_list_normalized, mat2d, mat3d);
+#if 0
+	Normalize();
 	cout << "original matched" << endl;
 	for (auto& e : match_list){
 		cout << e.first[0] << " " << e.first[1] << " "
@@ -868,12 +858,12 @@ void Geometry::TestGeometry(){
 	}
 
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_n;
-	for (auto& e : match_list_normalized){
-		Vec3d v3(e.first[0], e.first[1], 1.0);
-		v3 = mat2d*v3;
-		Vec4d v4(e.second[0], e.second[1], e.second[2], 1.0);
-		v4 = mat3d.inv()*v4;
-		match_n.push_back(make_pair(Vec2d(v3[0], v3[1]), Vec3d(v4[0], v4[1], v4[2])));
+	for (auto& e : match_2d_3d_normalized){
+		cv::Vec3d v3(e.first[0], e.first[1], 1.0);
+		v3 = mat_2d_scaling_inv*v3;
+		cv::Vec4d v4(e.second[0], e.second[1], e.second[2], 1.0);
+		v4 = mat_3d_scaling.inv()*v4;
+		match_n.push_back(std::make_pair(cv::Vec2d(v3[0], v3[1]), cv::Vec3d(v4[0], v4[1], v4[2])));
 		//match_n.push_back(make_pair(Vec2d(v3[0] / v3[2], v3[1] / v3[2]), Vec3d(v4[0] / v4[3], v4[1] / v4[3], v4[2] / v4[3])));
 	}
 	cout << " recover matched" << endl;
@@ -884,41 +874,37 @@ void Geometry::TestGeometry(){
 #endif
 	/********************************************************/
 
-	
-	cv::Matx33d	K_dlt;
 	cv::Matx33d	R_dlt;
 	cv::Vec3d	t_dlt;
-	std::vector<bool> bInlier;
 
 #if 1
 	//for (int i = 0; i < 1000; i++)
-	std::cout << "DLT inlier: " << ComputePoseDLT(match_list, R_dlt, t_dlt, bInlier, K_dlt) << std::endl;
+	std::cout << "DLT inlier: " << ComputePoseDLT() << std::endl;
+	GetRT(R_dlt, t_dlt);
+	//R_dlt(0, 0) = -0.3309141827354171; R_dlt(0, 1) = 0.9423555155623323, R_dlt(0, 2) = - 0.04961739567703868;
+	//R_dlt(1, 0) = 0.9432853734951151; R_dlt(1, 1) = 0.3288418387671397, R_dlt(1, 2) = - 0.04556039098161576;
+	//R_dlt(2, 0) = -0.02661781010342863; R_dlt(2, 1) = -0.06187994315985781, R_dlt(2, 2) = -0.9977286027872365;
+	
 	std::cout << "DLT R: " << std::endl << R_dlt << std::endl;
 	std::cout << "DLT t: " << t_dlt << std::endl;
-	std::cout << "Detm(R): " << M3Det(R_dlt) << std::endl;
-	std::cout << "Orthogonal: " << Orthogonal(R_dlt) << std::endl;
 
 	double quat[4] = { 0, 0, 0, 0 };
 	RotationToQuaterion(R_dlt, quat);
 	std::cout << "RotationToQuaterion Q: "
-		<< quat[0] << " "
-		<< quat[1] << " "
-		<< quat[2] << " "
-		<< quat[3] << std::endl;
+		<< quat[0] << " " << quat[1] << " "
+		<< quat[2] << " " << quat[3] << std::endl;
 
 	cv::Matx33d	R_quat;
 	QuaternionToRotation(quat, R_quat);
 	std::cout << "QuaternionToRotation R:" << std::endl << R_quat << std::endl;
-	std::cout << "Detm(R): " << M3Det(R_quat) << std::endl;
-	std::cout << "Orthogonal: " << Orthogonal(R_quat) << std::endl;
-	std::cout << "R_t * R : " << std::endl <<R_dlt*R_quat.t() << std::endl;
-	std::cout << " norm R_t * R : " << M3Error(R_dlt*R_quat.t()) << std::endl;
 	
 #endif
 	/*******************************************************/
 #if 0
+
 	//for (int i = 0; i < 1000; i++)
-	std::cout << "epnp inlier: " << ComputePoseEPnP(match_list, R_dlt, t_dlt, bInlier) << std::endl;
+	std::cout << "epnp inlier: " << ComputePoseEPnP() << std::endl;
+	GetRT(R_dlt, t_dlt);
 	std::cout << "epnp R: " << std::endl << R_dlt << std::endl;
 	std::cout << "epnp t: " << std::endl << t_dlt << std::endl;
 	
