@@ -9,10 +9,16 @@
 
 #include <opencv/cv.h>
 #include <opencv2/calib3d.hpp>
+#include <opencv2/stitching.hpp>
+//sparse bundler adjustment include path
+#include "sba.h"
 
 #include "geometry.h"
 #include "Timer/timer.h"
 #include "Epnp/epnp.h"
+#include "sba_warper/sba_warper.h"
+
+
 
 //estimate camera pose from 2d-3d correspondence
 //both DLT method and ePnP method implemented
@@ -558,6 +564,122 @@ bool Geometry::Normalize(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& mat
 }
 
 
+//Compute pose use nonlinear optimization(Motion only bundle adjustment)
+//
+int Geometry::RefinePoseSBA(const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& match_2d_3d,
+	cv::Matx33d &R_initial, cv::Vec3d &T_initial, const std::vector<bool>& binlier,
+	const bool K_fixed, const cv::Matx33d & K_estimated)
+{
+	sba_warper_data sba;
+	sba.clear();
+
+	sba.pnp = 3;//3 parameters per 3d point
+	sba.mnp = 2;//2 parameters per pixel point
+	sba.ncamera = 1;//refine only one image pose
+	sba.cnp = 6; //ri, rj, rk, tx, ty, tz;
+
+	if (!K_fixed){
+		sba.cnp += 5;//fu u0 v0 ar s
+	}
+
+	sba.n3dpoints = 0;
+	sba.n2dpoints = 0;
+	for (int i = 0; i < match_2d_3d.size(); i++){
+		if (binlier[i]){
+			++(sba.n3dpoints);
+		}
+	}
+	sba.n2dpoints = sba.n3dpoints;
+	
+	sba.vmask			= new char[sba.ncamera*sba.n3dpoints];
+	sba.para_camera		= new double[sba.ncamera*sba.cnp];
+	sba.para_3dpoints	= new double[sba.n3dpoints*sba.pnp];
+	sba.para_2dpoints	= new double[sba.n2dpoints*sba.mnp];
+
+	//TODO£º use try and catch
+	if (!sba.vmask || !sba.para_camera || !sba.para_3dpoints || !sba.para_2dpoints)
+	{
+		std::cerr << "new error. geometry.cpp line 601" << std::endl;
+	}
+	int j = 0;
+	//prepare 3d points and image points coordinates
+	for (int i = 0; i < match_2d_3d.size(); i++){
+		if (binlier[i]){
+			sba.para_2dpoints[2 * j + 0] = match_2d_3d[i].first[0];//x_image_pixel
+			sba.para_2dpoints[2 * j + 1] = match_2d_3d[i].first[1];//y_image_pixel
+			sba.para_3dpoints[3 * j + 0] = match_2d_3d[i].second[0];//X_world
+			sba.para_3dpoints[3 * j + 1] = match_2d_3d[i].second[1];//Y_world
+			sba.para_3dpoints[3 * j + 2] = match_2d_3d[i].second[2];//Z_world
+			sba.vmask[j] = 1;
+			j++;
+		}
+	}
+
+	//prepare frame parameter, e.g. 3 for rotation and 3 for translation
+	//if(sba.cnp == 11) add another 5 caribration parameters
+	sba.ncamera = 1;
+	//convert the rotation mat into Quaternion
+
+	return 1;
+}
+
+//unit quaternion are assumed
+//q = w + xi + yj + zk
+inline void Geometry::QuaternionToRotation(const double* quaterion, cv::Matx33d& R)const
+{
+	double w = quaterion[0];
+	double x = quaterion[1];
+	double y = quaterion[2];
+	double z = quaterion[3];
+
+	double wx = 2 * w*x, wy = 2 * w*y, wz = 2 * w*z;
+	double xx = 2 * x*x, xy = 2 * x*y, xz = 2 * x*z;
+	double yy = 2 * y*y, yz = 2 * y*z, zz = 2 * z*z;
+
+	R(0, 0) = 1.0 - yy - zz;	R(0, 1) = xy - wz;			R(0, 2) = xz + wy;
+	R(1, 0) = xy + wz;			R(1, 1) = 1.0 - xx - zz;	R(1, 2) = yz - wx;
+	R(2, 0) = xz - wy;			R(2, 1) = yz + wx;			R(2, 2) = 1.0 - xx - yy;
+}
+
+//unit quaternion are assumed
+//q = w + xi + yj + zk 
+inline void Geometry::RotationToQuaterion(const cv::Matx33d& R, double* quaternion)const
+{
+	double& w = quaternion[0];
+	double& x = quaternion[1];
+	double& y = quaternion[2];
+	double& z = quaternion[3];
+	// This algorithm comes from  "Quaternion Calculus and Fast Animation",
+	// Ken Shoemake, 1987 SIGGRAPH course notes
+	double t = R(0, 0) + R(1, 1) + R(2, 2);
+	if (t > 0){
+		t = std::sqrt(t + 1.0);
+		w = 0.5*t;
+		t = 0.5 / t;
+		x = (R(2, 1) - R(1, 2))*t;
+		y = (R(0, 2) - R(2, 0))*t;
+		z = (R(1, 0) - R(0, 1))*t;
+	}
+	else{
+		int i = 0;
+		if (R(1, 1) > R(0, 0)) 
+			i = 1;
+		if (R(2, 2) > R(i, i)) 
+			i = 2;
+		int j = (i + 1) % 3;
+		int k = (j + 1) % 3;
+		
+		t = std::sqrt(1.0 + R(i, i) - R(j, j) - R(k, k));
+		quaternion[i+1] = 0.5*t;
+		t = 0.5 / t;
+		w = (R(k, j) - R(j, k))*t;
+		w = w > 0 ? w : -w;
+		quaternion[j+1] = (R(j, i) + R(i, j))*t;
+		quaternion[k+1] = (R(k, i) + R(i, k))*t;
+		cout << " w: " << w << endl;
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////
 //for test
 const double uc = 320;
@@ -593,7 +715,7 @@ void random_pose(double R[3][3], double t[3])
 	R[2][2] = cos(theta);
 
 	t[0] = 0.0f;
-	t[1] = 0.0f;
+	t[1] = 3.0f;
 	t[2] = 6.0f;
 }
 
@@ -621,11 +743,33 @@ void project_with_noise(double R[3][3], double t[3],
 	v = vc + fv* Yc / Zc + nv;
 }
 
+bool Orthogonal(const cv::Matx33d& R){
+	double res = 0.0;
+	for (int i = 0; i < 3; i++){
+		res += R(0, i)*R(1, i);
+	}
+	if (int(res) != 0) return 0;
+	
+	res = 0.0;
+	for (int i = 0; i < 3; i++){
+		res += R(0, i)*R(2, i);
+	}
+	if (int(res) != 0) return 0;
+
+	for (int i = 0; i < 3; i++){
+		res += R(1, i)*R(2, i);
+	}
+	if (int(res) != 0) return 0;
+
+	return 1;
+}
+
+
 void Geometry::TestGeometry(){
-	srand(time(0));
+	srand((int)time(0));
 	std::cout << "test geometry function" << std::endl;
 
-	SetIntrinsicParameter(fu, uc, vc);
+	SetIntrinsicParameter(float(fu), int(uc), int(vc));
 
 	/********************************************************/
 	epnp PnP;
@@ -636,8 +780,8 @@ void Geometry::TestGeometry(){
 	random_pose(R_true, t_true);
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_list;
 
-	std::vector<cv::Point3f> list_points3d;
-	std::vector<cv::Point2f> list_points2d;
+	std::vector<cv::Point3d> list_points3d;
+	std::vector<cv::Point2d> list_points2d;
 
 	cv::Mat	points_3d(n, 3, CV_64FC1);
 	cv::Mat points_2d(n, 2, CV_64FC1);
@@ -649,8 +793,8 @@ void Geometry::TestGeometry(){
 		project_with_noise(R_true, t_true, Xw, Yw, Zw, u, v);
 		PnP.add_correspondence(Xw, Yw, Zw, u, v);
 		match_list.push_back(std::make_pair(cv::Vec2d(u, v), cv::Vec3d(Xw, Yw, Zw)));
-		list_points2d.push_back(cv::Point2f(u, v));
-		list_points3d.push_back(cv::Point3f(Xw, Yw, Zw));
+		list_points2d.push_back(cv::Point2d(u, v));
+		list_points3d.push_back(cv::Point3d(Xw, Yw, Zw));
 
 		points_2d.ptr<double>(i)[0] = u;
 		points_2d.ptr<double>(i)[1] = v;
@@ -745,21 +889,45 @@ void Geometry::TestGeometry(){
 	cv::Matx33d	R_dlt;
 	cv::Vec3d	t_dlt;
 	std::vector<bool> bInlier;
-#if 0
-	for (int i = 0; i < 1000; i++)
-		std::cout << "DLT inlier: " << ComputePoseDLT(match_list, R_dlt, t_dlt, bInlier, K_dlt) << std::endl;
-	std::cout << "DLT R: " << R_dlt << std::endl;
+
+#if 1
+	//for (int i = 0; i < 1000; i++)
+	std::cout << "DLT inlier: " << ComputePoseDLT(match_list, R_dlt, t_dlt, bInlier, K_dlt) << std::endl;
+	std::cout << "DLT R: " << std::endl << R_dlt << std::endl;
 	std::cout << "DLT t: " << t_dlt << std::endl;
+	std::cout << "Detm(R): " << M3Det(R_dlt) << std::endl;
+	std::cout << "Orthogonal: " << Orthogonal(R_dlt) << std::endl;
+
+	double quat[4] = { 0, 0, 0, 0 };
+	RotationToQuaterion(R_dlt, quat);
+	std::cout << "RotationToQuaterion Q: "
+		<< quat[0] << " "
+		<< quat[1] << " "
+		<< quat[2] << " "
+		<< quat[3] << std::endl;
+
+	cv::Matx33d	R_quat;
+	QuaternionToRotation(quat, R_quat);
+	std::cout << "QuaternionToRotation R:" << std::endl << R_quat << std::endl;
+	std::cout << "Detm(R): " << M3Det(R_quat) << std::endl;
+	std::cout << "Orthogonal: " << Orthogonal(R_quat) << std::endl;
+	std::cout << "R_t * R : " << std::endl <<R_dlt*R_quat.t() << std::endl;
+	std::cout << " norm R_t * R : " << M3Error(R_dlt*R_quat.t()) << std::endl;
+	
 #endif
 	/*******************************************************/
-#if 1
+#if 0
 	//for (int i = 0; i < 1000; i++)
 	std::cout << "epnp inlier: " << ComputePoseEPnP(match_list, R_dlt, t_dlt, bInlier) << std::endl;
 	std::cout << "epnp R: " << std::endl << R_dlt << std::endl;
 	std::cout << "epnp t: " << std::endl << t_dlt << std::endl;
+	
+	std::cout << "Detm(R): " << M3Det(R_dlt) << std::endl;
+	std::cout << "Orthogonal: " << Orthogonal(R_dlt) << std::endl;
+
 #endif
 
-#if 1
+#if 0
 
 	cv::Mat distCoeffs = cv::Mat::zeros(1, 4, CV_64FC1);
 	cv::Mat Rmat, Rvec, Tvec;

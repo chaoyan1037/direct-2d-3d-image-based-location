@@ -5,14 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
     <Filter Include="Source Files\Epnp">
       <UniqueIdentifier>{d1f861ff-93f4-45dd-aee8-7841fabf25e7}</UniqueIdentifier>
     </Filter>
@@ -21,6 +13,9 @@
     </Filter>
     <Filter Include="Source Files\PreProcess">
       <UniqueIdentifier>{c1d7a836-0916-4486-ae46-5d9622db3102}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\sba_warper">
+      <UniqueIdentifier>{302c1fe8-4bca-4d4d-ba3c-f21f7a773330}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -48,6 +43,12 @@
     <ClCompile Include="PreProcess\picture.cpp">
       <Filter>Source Files\PreProcess</Filter>
     </ClCompile>
+    <ClCompile Include="sba_warper\sba_imgproj.cpp">
+      <Filter>Source Files\sba_warper</Filter>
+    </ClCompile>
+    <ClCompile Include="sba_warper\sba_warper.cpp">
+      <Filter>Source Files\sba_warper</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="visualwords.h">
@@ -70,6 +71,12 @@
     </ClInclude>
     <ClInclude Include="PreProcess\picture.h">
       <Filter>Source Files\PreProcess</Filter>
+    </ClInclude>
+    <ClInclude Include="MEstimator.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="sba_warper\sba_warper.h">
+      <Filter>Source Files\sba_warper</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -12,6 +12,7 @@
 *.cluster
 visual_words_sift_100k.cluster
 
+TooN-2.2
 
 # emacs temp files
 *~
