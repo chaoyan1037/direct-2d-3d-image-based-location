@@ -5,6 +5,9 @@
 
 #include "sba_warper.h"
 
+using std::cout;
+using std::endl;
+
 /* unit quaternion from vector part */
 #define _MK_QUAT_FRM_VEC(q, v){                                     \
 	(q)[1] = (v)[0]; (q)[2] = (v)[1]; (q)[3] = (v)[2];                      \
@@ -641,29 +644,32 @@ static void img_projKRT_jac(int j, int i, double *aj, double *Aij, void *adata)
 
 
 //assume para_camera: 5 for intrinsics and 3 for rotation and 3 for translation
-void SbaMotionOnly(double* para_camera, int ncamera, int cnp,
+bool SbaMotionOnly(double* para_camera, int ncamera, int cnp,
 	char* vmask,
 	double* para_3dpoints, int n3dpoints, int pnp,
 	double* para_2dpoints, int n2dpoints, int mnp)
 {
-	int  expert = 0, verbose = 0;
-	double opts[SBA_OPTSSZ], info[SBA_INFOSZ], phi;
+	int  expert = 0, verbose = 1;
+	double opts[SBA_OPTSSZ], info[SBA_INFOSZ];
 
 	globs_ globs;
+
 	/* set up globs structure */
 	globs.cnp = cnp; globs.pnp = pnp; globs.mnp = mnp;
 	globs.rot0params = new double[FULLQUATSZ*ncamera];
+	globs.ncamera = ncamera; globs.n3dpoints = n3dpoints;
+	globs.n2dpoints = n2dpoints;
 
 	//cnp==11,  5 intrinsics and 3 for rotation(image part of quaternion) and 3 for translation
 	//cnp==6, 3 for rotation and 3 for translation
 	for (int i = 0; i < ncamera; i++){
-		globs.rot0params[i + 0] = para_camera[(i + 1)*cnp - 6];
-		globs.rot0params[i + 1] = para_camera[(i + 1)*cnp - 5];
-		globs.rot0params[i + 2] = para_camera[(i + 1)*cnp - 4];
-		globs.rot0params[i + 3] = sqrt(1.0 
-			- globs.rot0params[i + 0] * globs.rot0params[i + 0]
+		globs.rot0params[i + 1] = para_camera[(i + 1)*cnp - 6];
+		globs.rot0params[i + 2] = para_camera[(i + 1)*cnp - 5];
+		globs.rot0params[i + 3] = para_camera[(i + 1)*cnp - 4];
+		globs.rot0params[i + 0] = std::sqrt(1.0 
 			- globs.rot0params[i + 1] * globs.rot0params[i + 1]
-			- globs.rot0params[i + 2] * globs.rot0params[i + 2]);
+			- globs.rot0params[i + 2] * globs.rot0params[i + 2]
+			- globs.rot0params[i + 3] * globs.rot0params[i + 3]);
 		/* initialize the local rotation estimates to 0, corresponding to local quats (1, 0, 0, 0) */
 		para_camera[(i + 1)*cnp - 6] = 0.0;
 		para_camera[(i + 1)*cnp - 5] = 0.0;
@@ -686,8 +692,8 @@ void SbaMotionOnly(double* para_camera, int ncamera, int cnp,
 	globs.intrcalib = 0;
 	globs.nccalib = 0; //all parameters [fu, u0, v0, ar, skew] are free, where ar is the aspect ratio fv/fu.
 
-	expert = 0;
-	analyticjac = 0;
+	expert = 1;
+	analyticjac = 1;
 
 	/* call sparse LM routine */
 	opts[0] = SBA_INIT_MU; opts[1] = SBA_STOP_THRESH; opts[2] = SBA_STOP_THRESH;
@@ -697,6 +703,19 @@ void SbaMotionOnly(double* para_camera, int ncamera, int cnp,
 	//opts[4]=1E-05; // uncomment to force termination if the relative reduction in the RMS reprojection error drops below 1E-05
 
 	int n = 0, nvars = ncamera*cnp;
+
+	std::ofstream os("sba_warper_debug1.txt", std::ios::out | std::ios::trunc);
+	if (!os){
+		std::cout << "sba_warper_debug1.txt file open fail." << std::endl;
+	}
+	globs.print(os);
+	os.close();
+	
+	cout << "before ba camara_para: ";
+	for (int i = 6; i > 0; i--){
+		cout << para_camera[cnp - i] << " ";
+	}
+	cout << endl;
 
 	if (expert){
 		n = sba_mot_levmar_x(n3dpoints, ncamera, 0, vmask, para_camera, cnp, para_2dpoints, 0, mnp,
@@ -710,4 +729,164 @@ void SbaMotionOnly(double* para_camera, int ncamera, int cnp,
 			analyticjac ? (fixedcal ? img_projRT_jac : (havedist ? img_projKDRT_jac : img_projKRT_jac)) : 0,
 			(void *)(&globs), 100, verbose, opts, info);
 	}
+	/*
+	info[6]=reason for terminating:
+	1 - stopped by small gradient J^T e
+    2 - stopped by small dp
+	3 - stopped by itmax
+	4 - stopped by small relative reduction in ||e||_2
+	5 - stopped by small ||e||_2
+	6 - too many attempts to increase damping. Restart with increased mu
+	7 - stopped by invalid (i.e. NaN or Inf) "func" values. This is a user error
+	*/
+	return (info[6] < 6);
+
+#if 0
+	cout << "after ba camara_para: ";
+	for (int i = 6; i > 0; i--){
+		cout << para_camera[cnp - i] << " ";
+	}
+	cout << endl;
+#endif	
+}
+
+/********************** struct globs_ ****************************/
+void globs_::print(std::ostream& os)
+{
+	using std::endl;
+	os << " ncamera: " << ncamera << " n3dpoints: " << n3dpoints << " n2dpoints: " << n2dpoints << endl;
+	os << "rot0params: " << endl;
+	for (int i = 0; rot0params && i < ncamera; i++){
+		os	<< rot0params[4 * i + 0] << " "
+			<< rot0params[4 * i + 1] << " "
+			<< rot0params[4 * i + 2] << " "
+			<< rot0params[4 * i + 3] << " "
+			<< endl;
+	}
+
+	os << " nccalib: " << nccalib << " ncdist: " << ncdist;
+	os << endl << " intrcalib: " << endl;
+	for (int i = 0; intrcalib && i < ncamera; i++){
+		os	<< intrcalib[5 * i + 0] << " "
+			<< intrcalib[5 * i + 1] << " "
+			<< intrcalib[5 * i + 2] << " "
+			<< intrcalib[5 * i + 3] << " "
+			<< intrcalib[5 * i + 4] << " "
+			<< endl;
+	}
+
+	os << endl << " cnp: " << cnp << " pnp: " << pnp << " mnp: " << mnp;
+	os << endl << " camparams: " << endl;
+	for (int i = 0; camparams && i < ncamera; i++){
+		for (int j = 0; j < cnp; j++){
+			os << camparams[i*cnp + j] <<" ";
+		}
+		os << endl;
+	}
+
+	os << " ptparams: " << endl;
+	for (int i = 0; ptparams && i < n3dpoints; i++){
+		os << ptparams[i*pnp + 0] << " ";
+		os << ptparams[i*pnp + 1] << " ";
+		os << ptparams[i*pnp + 2] << endl;
+	}
+}
+
+
+/******************* struct sba_warper_data ***********************/
+//copy constructor
+sba_warper_data::sba_warper_data(const sba_warper_data&s){
+	ncamera = s.ncamera;
+	cnp = s.cnp;
+	n3dpoints = s.n3dpoints;
+	pnp = s.pnp;
+	n2dpoints = s.n2dpoints;
+	mnp = s.mnp;
+	if (s.para_camera){
+		para_camera = new double[ncamera*cnp];
+		std::memcpy(para_camera, s.para_camera, sizeof(double)*ncamera*cnp);
+	}
+	if (s.vmask){
+		vmask = new char[ncamera*n3dpoints];
+		std::memcpy(vmask, s.vmask, sizeof(char)*ncamera*n3dpoints);
+	}
+	if (s.para_2dpoints){
+		para_2dpoints = new double[n2dpoints*mnp];
+		std::memcpy(para_2dpoints, s.para_2dpoints, sizeof(double)*n2dpoints*mnp);
+	}
+	if (s.para_3dpoints){
+		para_3dpoints = new double[n3dpoints*pnp];
+		std::memcpy(para_3dpoints, s.para_3dpoints, sizeof(double)*n3dpoints*pnp);
+	}
+}
+//copy assignment
+sba_warper_data& sba_warper_data::operator = (const sba_warper_data&s)
+{
+	if (this != &s){
+		sba_warper_data temp(s);
+		swap(temp);
+	}
+	return *this;
+}
+
+//swap function
+void sba_warper_data::swap(sba_warper_data&s)
+{
+	std::swap(para_camera, s.para_camera);
+	std::swap(ncamera, s.ncamera);
+	std::swap(cnp, s.cnp);
+	std::swap(vmask, s.vmask);
+	std::swap(para_3dpoints, s.para_3dpoints);
+	std::swap(n3dpoints, s.n3dpoints);
+	std::swap(pnp, s.pnp);
+	std::swap(para_2dpoints, s.para_2dpoints);
+	std::swap(n2dpoints, s.n2dpoints);
+	std::swap(mnp, s.mnp);
+}
+
+// print the sba data to debug
+void sba_warper_data::print(std::ostream& os)
+{
+	using std::endl;
+
+	os << endl;
+	os << " ncamera: " << ncamera << " cnp: " << cnp << endl;
+	os << " para_camera: " << endl;
+	for (int i = 0; i < ncamera; i++){
+		for (int j = 0; j < cnp; j++){
+			os << para_camera[cnp*i + j] << " ";
+		}
+		os << endl;
+	}
+
+#if 1
+	os << endl;
+	os << " vmask: " << endl;
+	for (int i = 0; i < ncamera; i++){
+		for (int j = 0; j < n3dpoints; j++){
+			os << (int)vmask[n3dpoints*i + j] << " ";
+		}
+		os << endl;
+	}
+
+	os << endl;
+	os << " n3dpoints: " << n3dpoints << " pnp: " << pnp << endl;
+	os << " para_3dpoints: " << endl;
+	for (int i = 0; i < n3dpoints; i++){
+		for (int j = 0; j < pnp; j++){
+			os << para_3dpoints[pnp*i + j] << " ";
+		}
+		os << endl;
+	}
+
+	os << endl;
+	os << " n2dpoints: " << n2dpoints << " mnp: " << mnp << endl;
+	os << " para_2dpoints: " << endl;
+	for (int i = 0; i < n2dpoints; i++){
+		for (int j = 0; j < mnp; j++){
+			os << para_2dpoints[mnp*i + j] << " ";
+		}
+		os << endl;
+	}
+#endif
 }

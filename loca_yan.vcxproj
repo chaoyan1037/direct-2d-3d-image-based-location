@@ -106,7 +106,7 @@
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
-      <GenerateDebugInformation>false</GenerateDebugInformation>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>sbad.lib;opencv_ts310d.lib;opencv_core310d.lib;opencv_calib3d310d.lib;opencv_flann310d.lib;opencv_xfeatures2d310d.lib;opencv_optflow310d.lib;</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

@@ -1,8 +1,12 @@
 #ifndef _SBA_WARPER_H
 #define _SBA_WARPER_H
 
-#define FULLQUATSZ     4
+#include <iostream>
+#include <ostream>
+#include <fstream>
 #include <string>
+
+#define FULLQUATSZ     4
 
  /* in sba_imgproj.cpp */
  void calcImgProj(double a[5], double qr0[4], double v[3], double t[3], double M[3], double n[2]); 
@@ -20,7 +24,7 @@
 
 
 //assume para_camera: f d and 3 for rotation and 3 for translation
-void SbaMotionOnly(double* para_camera, int ncamera, int cnp,
+bool SbaMotionOnly(double* para_camera, int ncamera, int cnp,
 	char* vmask,
 	double* para_3dpoints, int n3dpoints, int pnp,
 	double* para_2dpoints, int n2dpoints, int mnp);
@@ -40,6 +44,9 @@ struct globs_
 		if (ptparams)	delete[]	ptparams;
 		if (camparams)	delete[]	camparams;
 	}
+
+	void print(std::ostream& os = std::cout);
+
 	double *rot0params; /* initial rotation parameters, combined with a local rotation parameterization */
 	double *intrcalib; /* the 5 intrinsic calibration parameters in the order [fu, u0, v0, ar, skew],
 					   * where ar is the aspect ratio fv/fu.
@@ -74,6 +81,10 @@ struct globs_
 
 	double *ptparams; /* needed only when bundle adjusting for camera parameters only */
 	double *camparams; /* needed only when bundle adjusting for structure parameters only */
+
+	int ncamera;
+	int n3dpoints;
+	int n2dpoints;
 };
 
 struct sba_warper_data
@@ -89,72 +100,26 @@ struct sba_warper_data
 	}
 	
 	//copy constructor
-	sba_warper_data(const sba_warper_data&s){
-		ncamera		= s.ncamera;
-		cnp			= s.cnp;
-		n3dpoints	= s.n3dpoints;
-		pnp			= s.pnp;
-		n2dpoints	= s.n2dpoints;
-		mnp			= s.mnp;
-		if (s.para_camera){
-			para_camera = new double[ncamera*cnp];
-			std::memcpy(para_camera, s.para_camera, sizeof(double)*ncamera*cnp);
-		}
-		if (s.vmask){
-			vmask = new char[ncamera*n3dpoints];
-			std::memcpy(vmask, s.vmask, sizeof(char)*ncamera*n3dpoints);
-		}
-		if (s.para_2dpoints){
-			para_2dpoints = new double[n2dpoints*mnp];
-			std::memcpy(para_2dpoints, s.para_2dpoints, sizeof(double)*n2dpoints*mnp);
-		}
-		if (s.para_3dpoints){
-			para_3dpoints = new double[n3dpoints*pnp];
-			std::memcpy(para_3dpoints, s.para_3dpoints, sizeof(double)*n3dpoints*pnp);
-		}
-	}
+	sba_warper_data(const sba_warper_data&s);
+
 	//copy assignment
-	sba_warper_data& operator=(const sba_warper_data&s){
-		if (this != &s){
-			if (para_camera)	delete[] para_camera;
-			if (vmask)			delete[] vmask;
-			if (para_2dpoints)	delete[] para_2dpoints;
-			if (para_3dpoints)	delete[] para_3dpoints;
+	sba_warper_data& operator=(const sba_warper_data&s);
 
-			ncamera = s.ncamera;
-			cnp = s.cnp;
-			n3dpoints = s.n3dpoints;
-			pnp = s.pnp;
-			n2dpoints = s.n2dpoints;
-			mnp = s.mnp;
-
-			if (s.para_camera){
-				para_camera = new double[ncamera*cnp];
-				std::memcpy(para_camera, s.para_camera, sizeof(double)*ncamera*cnp);
-			}
-			if (s.vmask){
-				vmask = new char[ncamera*n3dpoints];
-				std::memcpy(vmask, s.vmask, sizeof(char)*ncamera*n3dpoints);
-			}
-			if (s.para_2dpoints){
-				para_2dpoints = new double[n2dpoints*mnp];
-				std::memcpy(para_2dpoints, s.para_2dpoints, sizeof(double)*n2dpoints*mnp);
-			}
-			if (s.para_3dpoints){
-				para_3dpoints = new double[n3dpoints*pnp];
-				std::memcpy(para_3dpoints, s.para_3dpoints, sizeof(double)*n3dpoints*pnp);
-			}
-
-		}
-		return *this;
-	}
+	// swap function
+	void swap(sba_warper_data&s);
 
 	void clear(){
 		if (para_camera)	delete[] para_camera;
 		if (vmask)			delete[] vmask;
 		if (para_2dpoints)	delete[] para_2dpoints;
 		if (para_3dpoints)	delete[] para_3dpoints;
+		ncamera = 0; cnp = 0; 
+		n3dpoints = 0; pnp = 0;
+		n2dpoints = 0; mnp = 0;
 	}
+
+	// print the sba data to debug
+	void print(std::ostream& os = std::cout);
 
 	double* para_camera;
 	int ncamera, cnp;
@@ -163,7 +128,6 @@ struct sba_warper_data
 	int n3dpoints, pnp;
 	double* para_2dpoints;
 	int n2dpoints, mnp;
-
 };
 
 #endif

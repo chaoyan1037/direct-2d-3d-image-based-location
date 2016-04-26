@@ -31,7 +31,7 @@ public:
 	bool Normalize();
 
 	//Compute pose use nonlinear optimization
-	int RefinePoseSBA(const bool K_fixed);
+	bool RefinePoseSBA(const bool K_fixed);
 
 	inline double M3Det(const cv::Matx33d &m) const
 	{
@@ -45,6 +45,18 @@ public:
 			+ m(1, 0)*m(1, 0) + (1 - m(1, 1))*(1 - m(1, 1)) + m(1, 2)*m(1, 2)
 			+ m(2, 0)*m(2, 0) + m(2, 1)*m(2, 1) + (1 - m(2, 2))*(1 - m(2, 2));
 	}
+
+	/*cv::Matx33d M3Mult(const cv::Matx33d& m1, const cv::Matx33d& m2)
+	{
+		cv::Matx33d res;
+		for (int i = 0; i < 3; i++){
+			for (int j = 0; j < 3; j++){
+				res(i, j) = m1(i, 0)*m2(0, j) + m1(i, 1)*m2(1, j) + m1(i, 2)*m2(2, j);
+			}
+		}
+		return res;
+	}*/
+
 	/*inline cv::Matx33d Inv(const cv::Matx33d &m){
 		cv::Matx33d madjoin;
 		double delta = M3Det(m);
@@ -97,7 +109,7 @@ private:
 
 	cv::Matx33d K_Inv;
 
-	//estimated K
+	//estimated R
 	cv::Matx33d R;
 
 	//estimated T
@@ -107,7 +119,9 @@ private:
 	cv::Matx33d K_estimated;
 
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_2d_3d_normalized;
-
+	// x = P * X; mat2ds * x = P_scaled * mat3ds * X
+	// x = mat2ds_inv * P_scaled *mat3ds * X = P * X
+	// P = mat2ds_inv * P_scaled *mat3ds 
 	cv::Matx33d	mat_2d_scaling_inv;
 
 	cv::Matx44d mat_3d_scaling;

@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <fstream>
 #include <time.h>
 #include <stdlib.h>
 #include <omp.h>
@@ -17,8 +18,6 @@
 #include "Timer/timer.h"
 #include "Epnp/epnp.h"
 #include "sba_warper/sba_warper.h"
-
-
 
 //estimate camera pose from 2d-3d correspondence
 //both DLT method and ePnP method implemented
@@ -199,13 +198,15 @@ int Geometry::ComputePoseEPnP(){
 	std::vector<bool> bInlier_(match_num, 0);
 	int inlier_num_last = 0, inlier_num_cur = 0;
 	double err2 = 0.0;
+
+	binlier.assign(match_num, 0);
 	//std::cout << " start refine" << std::endl;
 	//refine the inlier
 	while (1)
 	{
 		inlier_match_index_list.clear();
 		//find inlier
-		bInlier_.resize(match_num, 0);
+		bInlier_.assign(match_num, 0);
 		for (int i = 0; i < match_num; i++){
 			if (ComputeReprojectionError(P_inlier, match_2d_3d[i]) < 10.0){
 				inlier_match_index_list.push_back(i);
@@ -345,12 +346,13 @@ int Geometry::ComputePoseDLT(){
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> inlier_match_list;
 	std::vector<bool> bInlier_(match_num, 0);
 	int inlier_num_last = 0, inlier_num_cur = 0;
-	
+	binlier.assign(match_num, 0);
+
 	//refine the inlier
 	while (1)
 	{
 		inlier_match_list.clear();
-		bInlier_.resize(match_num, 0);
+		bInlier_.assign(match_num, 0);
 		if (bNormalized){
 			for (int i = 0; i < match_num; i++){
 				if (ComputeReprojectionError(P_inlier, match_2d_3d[i]) < 10.0){
@@ -383,7 +385,7 @@ int Geometry::ComputePoseDLT(){
 		binlier.swap(bInlier_);
 	}
 
-	std::cout << "inlier match num: " << inlier_num_last << std::endl;
+	std::cout << "inlier match num: " <<inlier_num_last << std::endl;
 	if (inlier_num_last < 6){
 		std::cout << "not enough inlier, no pose calculated." << std::endl;
 		return 0;
@@ -396,28 +398,13 @@ int Geometry::ComputePoseDLT(){
 			KR(i, j) = P(i, j);
 	}
 	if (M3Det(KR) < 0){
-		//cout << "||KR|| < 0, P: " << P << endl;
-		//KR = -1.0*KR;
 		P = -P;
-		//P_inlier = -P_inlier;
-		//cout << "P=-P, P: " << P << endl;
-		//cout << "less than 0" << endl;
 	}
-	//cout << "KR :" <<endl<< KR << endl;
-	//cv::RQDecomp3x3(KR, K_RQ, R_RQ);
-	//P = (1.0 / K_RQ(2, 2))*P;
-	//K_RQ = (1.0 / K_RQ(2, 2))*K_RQ;
-	//cout << "K_RQ: " << endl << K_RQ << endl;
-	//cout << "R_RQ: " << endl << R_RQ << endl;
-	//cv::Matx31d T_RQ = K_RQ.inv()*(P.col(3));
-	//cout << "T_RQ: " << T_RQ.t() << endl;
 
-	//P = P_inlier;
 	cv::Vec4d	camera_position;
 	// The function computes a decomposition of a projection matrix into
 	// a calibration  and a rotation matrix and the position of a camera.
 	cv::decomposeProjectionMatrix(P, K_estimated, R, camera_position);
-	//P = 1.0 / K_estimated(2, 2)*P;
 	K_estimated = 1.0 / K_estimated(2,2)*K_estimated;
 	//std::cout << "estimated K is: " <<endl<< K_estimated << std::endl;
 	//cout << "determinent of K: " << M3Det(K_estimated) << endl;
@@ -431,13 +418,9 @@ int Geometry::ComputePoseDLT(){
 	// for camera center P = 0 = R*X+t£¬ then X = -R*t is the center is world coordinate;
 	t = -R*t;
 
-	//cout << "translation: " << t.t() << endl;
-	//t = K_estimated.inv()*P.col(3);
-
 	T[0] = t(0, 0);
 	T[1] = t(1, 0);
 	T[2] = t(2, 0);
-	//cout << "estimate t: " << T << endl;
 
 	return inlier_num_last;
 }
@@ -450,7 +433,7 @@ bool Geometry::CM_Compute(cv::Matx34d& P,
 
 	int row_num = (int)match_2d_3d.size();
 	if (row_num < 6){
-		std::cout << "match_2d_3d num is less than 6. geometry.cpp line 442" << std::endl;
+		std::cout << "match_2d_3d num is less than 6. geometry.cpp line 436" << std::endl;
 		return 0;
 	}
 
@@ -557,8 +540,7 @@ bool Geometry::Normalize()
 
 
 //Compute pose use nonlinear optimization(Motion only bundle adjustment)
-//
-int Geometry::RefinePoseSBA(const bool K_fixed)
+bool Geometry::RefinePoseSBA(const bool K_fixed)
 {
 	sba_warper_data sba;
 	sba.clear();
@@ -568,6 +550,7 @@ int Geometry::RefinePoseSBA(const bool K_fixed)
 	sba.ncamera = 1;//refine only one image pose
 	sba.cnp = 6; //ri, rj, rk, tx, ty, tz;
 
+	//fix intrinsics?
 	if (!K_fixed){
 		sba.cnp += 5;//fu u0 v0 ar s
 	}
@@ -609,6 +592,58 @@ int Geometry::RefinePoseSBA(const bool K_fixed)
 	//if(sba.cnp == 11) add another 5 caribration parameters
 	sba.ncamera = 1;
 	//convert the rotation mat into Quaternion
+	double quat[4];
+	RotationToQuaterion(R, quat);
+
+	//initiate camera parameters
+	sba.para_camera[sba.cnp - 6] = quat[1];
+	sba.para_camera[sba.cnp - 5] = quat[2];
+	sba.para_camera[sba.cnp - 4] = quat[3];
+	sba.para_camera[sba.cnp - 3] = T[0];
+	sba.para_camera[sba.cnp - 2] = T[1];
+	sba.para_camera[sba.cnp - 1] = T[2];
+
+	if (!K_fixed){
+		sba.para_camera[0] = K_estimated(0, 0); //fu
+		sba.para_camera[1] = K_estimated(0, 2); //u0
+		sba.para_camera[2] = K_estimated(1, 2); //v0
+		sba.para_camera[3] = K_estimated(1, 1) / K_estimated(0, 0); //ar = fv/fu
+		sba.para_camera[4] = K_estimated(0, 1); //skew
+	}
+
+	std::ofstream os("sba_debug1.txt", std::ios::out | std::ios::trunc);
+	if (!os){
+		std::cout << "sba_debug.txt file open fail." << std::endl;
+	}
+	sba.print(os);
+	os.close();
+
+	if ( 0 == SbaMotionOnly(sba.para_camera, 
+		sba.ncamera, sba.cnp, sba.vmask,
+		sba.para_3dpoints, sba.n3dpoints, sba.pnp,
+		sba.para_2dpoints, sba.n2dpoints, sba.mnp) )
+	{
+		std::cout << " call SbaMotionOnly fail. " << std::endl;
+		return 0; //fail
+	}
+	
+
+
+	os.open("sba_debug2.txt", std::ios::out | std::ios::trunc);
+	sba.print(os);
+	os.close();
+
+	quat[1] = sba.para_camera[sba.cnp - 6];
+	quat[2] = sba.para_camera[sba.cnp - 5];
+	quat[3] = sba.para_camera[sba.cnp - 4];
+	T[0] = sba.para_camera[sba.cnp - 3];
+	T[1] = sba.para_camera[sba.cnp - 2];
+	T[2] = sba.para_camera[sba.cnp - 1];
+	
+	cv::Matx33d Rq;
+	QuaternionToRotation(quat, Rq);
+	//Rq is the rotation relative to the world coordinate
+	R = Rq * R;
 
 	return 1;
 }
@@ -678,8 +713,8 @@ const double uc = 320;
 const double vc = 240;
 const double fu = 800;
 const double fv = 800;
-const int n = 200;
-const double noise = 3.0;
+const int n = 100;
+const double noise = 3.3;
 
 double rand(double min, double max)
 {
@@ -771,6 +806,18 @@ void Geometry::TestGeometry(){
 	double R_true[3][3], t_true[3];
 	random_pose(R_true, t_true);
 	
+	std::cout << "ground truth R: " << std::endl;
+	for (int i = 0; i < 3; i++){
+		for (int j = 0; j < 3; j++){
+			std::cout << R_true[i][j] << " ";
+		}
+		std::cout << std::endl;
+	}
+	std::cout << "ground truth t: " ;
+	for (int i = 0; i < 3; i++)
+		std::cout << t_true[i] << " ";
+	cout << endl;
+
 	auto& match_list = match_2d_3d;
 
 	std::vector<cv::Point3d> list_points3d;
@@ -784,6 +831,9 @@ void Geometry::TestGeometry(){
 		double Xw, Yw, Zw, u, v;
 		random_point(Xw, Yw, Zw);
 		project_with_noise(R_true, t_true, Xw, Yw, Zw, u, v);
+		if (!(u >= 0 && u <= 640 && v >= 0 && v <= 480)){ 
+			i--; continue; 
+		}
 		PnP.add_correspondence(Xw, Yw, Zw, u, v);
 		match_list.push_back(std::make_pair(cv::Vec2d(u, v), cv::Vec3d(Xw, Yw, Zw)));
 		list_points2d.push_back(cv::Point2d(u, v));
@@ -888,6 +938,14 @@ void Geometry::TestGeometry(){
 	std::cout << "DLT R: " << std::endl << R_dlt << std::endl;
 	std::cout << "DLT t: " << t_dlt << std::endl;
 
+	RefinePoseSBA(0);
+	GetRT(R_dlt, t_dlt);
+	std::cout << "RefinePoseSBA R: " << std::endl << R_dlt << std::endl;
+	std::cout << "RefinePoseSBA t: " << t_dlt << std::endl;
+
+#endif
+
+#if 0
 	double quat[4] = { 0, 0, 0, 0 };
 	RotationToQuaterion(R_dlt, quat);
 	std::cout << "RotationToQuaterion Q: "
@@ -928,4 +986,5 @@ void Geometry::TestGeometry(){
 	std::cout << "T: " << std::endl << Tvec << std::endl;
 
 #endif
+
 }

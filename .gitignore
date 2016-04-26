@@ -9,6 +9,9 @@
 *log
 *sdf
 
+sba_debug*
+sba_warper_debug*
+
 *.cluster
 visual_words_sift_100k.cluster
 
