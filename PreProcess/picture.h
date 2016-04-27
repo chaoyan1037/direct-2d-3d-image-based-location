@@ -23,8 +23,10 @@ int CalculateSIFTDistanceSquared(const unsigned char* d1, const unsigned char* d
 
 struct SIFT_KeyPoint
 {
-	float x;//origin is the left-up corner
+	//origin is the left-up corner
+	//in .key file  y  x  scale  orientation
 	float y;
+	float x; //x is col
 	float scale;
 	float orientation;//(in radians from - PI to PI)
 };
@@ -124,8 +126,8 @@ public:
 
 private:
 
-	int								 mKeypoint_num;//total num of descriptors
-	int								 mDes_length;//128 for sift
+	size_t							 mKeypoint_num;//total num of descriptors
+	size_t							 mDes_length;//128 for sift
 	std::vector<SIFT_KeyPoint>		 mFeature_points;//origin is the left-up corner
 	std::vector<SIFT_Descriptor>	 mDescriptors;
 };
@@ -153,7 +155,7 @@ public:
 	bool SetParameters(const std::string& model_path, const std::string &list);
 
 	//return all pictures
-	const std::vector<PICTURE>& GetAllPictures()const
+	const std::vector<PICTURE>& GetAllPictures() const
 	{
 		return mAll_pictures;
 	}

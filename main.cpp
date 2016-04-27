@@ -21,15 +21,15 @@ using namespace std;
 
 int main(int * argc, char** argv)
 {
-	Geometry geo;
-	geo.TestGeometry();
+	//Geometry geo;
+	//geo.TestGeometry();
 
-	return 1;
+	//return 1;
 	/*	VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path,
 		const std::string &list_txt,
 		const std::string &bundle_file)
 	*/
-	VISUALWORDS_3DPOINT_HANDLER vw_3d_point_handler("D:/bundlerSIFT/examples/statue/",
+	VISUALWORDS_3DPOINT_HANDLER vw_3d_point_handler("D:/bundlerSIFT/examples/statue",
 		"list.txt", "D:/bundlerSIFT/examples/statue/bundle/bundle.out");
 	vw_3d_point_handler.Init();
 

@@ -21,7 +21,8 @@ PARSE_BUNDLER::~PARSE_BUNDLER()
 }
 
 //parse the bundler file
-/*Each camera entry contains the estimated camera intrinsics and extrinsics, and has the form:
+/*Each camera entry contains the estimated camera intrinsics and extrinsics,
+  and has the form:
 <f> <k1> <k2>   [the focal length, followed by two radial distortion coeffs]
 <R>             [a 3x3 matrix representing the camera rotation]
 <t>             [a 3-vector describing the camera translation]
@@ -126,8 +127,8 @@ bool PARSE_BUNDLER::LoadCameraInfo( ALL_PICTURES& all_pics )
 			auto & view = mFeature_infos[i].mView_list[j];
 			auto & keypoint_vec = picture[mFeature_infos[i].mView_list[j].camera].GetFeaturePoint();
 
-			view.x				= keypoint_vec[view.key].x;
-			view.y				= keypoint_vec[view.key].y;
+			//do not use SIFT x, y coordinates, of which the origin is the left-up corner
+			//use the bundler x, y coordinates, of which the origin is the center of image
 			view.scale			= keypoint_vec[view.key].scale;
 			view.orientation	= keypoint_vec[view.key].orientation;
 

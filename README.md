@@ -27,7 +27,7 @@ Please first install OpenCV library on your PC.
 
 Besides, the program use TooN to do nonlinear optimization as the PTAM. 
 You can download TooN here http://www.edwardrosten.com/cvd/toon/html-user/
-Just extra the TooN under the source file and rename it as "TooN". 
+Just extract the TooN under the source file and rename it as "TooN". 
 
 To accelerate the processing, simple OpenMP instructors is used.
 To enable OpenMP sopport, choose visual studio project properties -> Configuration Properties

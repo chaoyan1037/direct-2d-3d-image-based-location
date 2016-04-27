@@ -1,12 +1,11 @@
 #include <fstream>
 #include <algorithm>
-#include <windows.h>
 
 #include "visualwords.h"
 #include "PreProcess/picture.h"
+#include "Timer/timer.h"
 
 using namespace std;
-
 
 //get the number of database total visual words
 int VISUALWORDS_HANDLER::GetNumVisualWords() const
@@ -119,19 +118,32 @@ VISUALWORDS_3DPOINT_HANDLER::VISUALWORDS_3DPOINT_HANDLER(const std::string &bund
 //initiation work, load the picture and 3d points and build the index
 bool VISUALWORDS_3DPOINT_HANDLER::Init()
 {
+	Timer timer;
+	timer.Start();
 	//load the database pictures
 	mPic_db.LoadAllPictures();
+	timer.Stop();
+	std::cout << "Load database pictures time: " << timer.GetElapsedTimeAsString() << std::endl;
 
+	timer.ReStart();
 	mParse_bundler.ParseBundlerFile();
 	mParse_bundler.LoadCameraInfo(mPic_db);
-	
+	timer.Stop();
+	std::cout << "Parse Bundler file time: " << timer.GetElapsedTimeAsString() << std::endl;
+
 	//after load bundler and execute LoadCameraInfo, release the mPic_db
 	mPic_db.ClearAllPictures();
 
+	timer.ReStart();
 	mVW_handler.LoadDBVisualWords();
+	timer.Stop();
+	std::cout << "Load visual words time: " << timer.GetElapsedTimeAsString() << std::endl;
+	
+	timer.ReStart();
 	mVW_handler.BuildIndex();
-
 	BuildIndex3DPoints();
+	timer.Stop();
+	std::cout << "Build visual words index time: " << timer.GetElapsedTimeAsString() << std::endl;
 
 	return 1;
 }
@@ -202,8 +214,9 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 			int min_distance_squared_each_3d_point = 100000000;
 			for (int j = 0; j < _3d_point_feat_desc.size(); j++)
 			{
+				using std::min;
 				int distsq_temp = CalculateSIFTDistanceSquared(pic_feat_desc[i].ptrDesc, _3d_point_feat_desc[j].ptrDesc);
-				min_distance_squared_each_3d_point = std::min(distsq_temp, min_distance_squared_each_3d_point);
+				min_distance_squared_each_3d_point = min(distsq_temp, min_distance_squared_each_3d_point);
 			}
 
 			//after get this 3d point smallest distance

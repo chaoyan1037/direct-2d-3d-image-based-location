@@ -4,7 +4,8 @@
 #include <sstream>
 #include <memory>
 #include <omp.h>
-#include <windows.h>
+
+#include "Timer/timer.h"
 
 int SIFT_Descriptor::legth = 128;
 
@@ -40,30 +41,33 @@ bool PICTURE::LoadKeyPointAndDes(std::string des_filename)
 	}
 
 	infile >> mKeypoint_num >> mDes_length;
+	assert(mKeypoint_num >= 0 && mDes_length >= 0);
 
-	mFeature_points.clear();
 	mFeature_points.resize(mKeypoint_num);
-	mDescriptors.clear();
 	mDescriptors.resize(mKeypoint_num);
+
+	//assert(mDes_length == mDescriptors[0].legth);
 
 	for (int cnt = 0; cnt < mKeypoint_num; cnt++)
 	{
 		auto& sift_keypt = mFeature_points[cnt];
-		infile >> sift_keypt.x >> sift_keypt.y 
+		// y x  scale  orientation
+		infile >> sift_keypt.y >> sift_keypt.x 
 			>> sift_keypt.scale >> sift_keypt.orientation;
 
 		//directly operate on the desc
 		//do not use temp variable and then push_back it into the vector
 		//since program end the temp variable will release the newed memory 
 		auto& sift_desc = mDescriptors[cnt];
-		int des_temp = 0;
 
 		sift_desc.ptrDesc = new unsigned char[sift_desc.legth];
 		if (sift_desc.ptrDesc == nullptr || mDes_length != sift_desc.legth){
-			std::cerr << "new error(picture.cpp, line56)" << std::endl;
-			abort();
+			std::cerr << "new error(picture.cpp, line 56)" << std::endl;
+			return 0;
 		}
+
 		//read the descriptor
+		int des_temp = 0;
 		for (int i = 0; i < sift_desc.legth; ++i)
 		{
 			infile >> des_temp;
@@ -72,6 +76,7 @@ bool PICTURE::LoadKeyPointAndDes(std::string des_filename)
 	}
 
 	infile.close();
+
 	return 1;
 }
 
@@ -90,7 +95,7 @@ bool ALL_PICTURES::LoadAllPictures()
 		return 0;
 	}
 
-	vector<string> pic_filename;
+	vector<string> pic_keyfilename;
 	string  line_in_file; 
 	while ( getline(infile, line_in_file) )
 	{
@@ -98,26 +103,25 @@ bool ALL_PICTURES::LoadAllPictures()
 		string picture_filename;
 		words_in_line >> picture_filename;
 
+		picture_filename.erase(picture_filename.begin());
+		picture_filename.erase(picture_filename.begin());
 		picture_filename.erase(picture_filename.end() - 3, picture_filename.end());
 		picture_filename += "key";
 
-		pic_filename.push_back(picture_filename);
+		pic_keyfilename.push_back(picture_filename);
 	}
 	//clear the pictures and then load pictures;
 	mAll_pictures.clear();
-	mAll_pictures.resize(pic_filename.size());
+	mAll_pictures.resize(pic_keyfilename.size());
 	
-	double time1 = (double)GetTickCount();
 
 #pragma omp parallel for
-	for (int i = 0; i < pic_filename.size(); i++)
+	for (int i = 0; i < pic_keyfilename.size(); i++)
 	{
 		//load a picture
-		mAll_pictures[i].LoadKeyPointAndDes(mDBpath + "/" + pic_filename[i]);
+		mAll_pictures[i].LoadKeyPointAndDes(mDBpath + "/" + pic_keyfilename[i]);
 	}
 
-	time1 = (double)GetTickCount() - time1;
-	cout << "load picture time: " << time1 << endl;
 	return 1;
 }
 

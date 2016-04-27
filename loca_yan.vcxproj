@@ -82,7 +82,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>D:\sba-1.6;$(OPENCV)\include;$(IncludePath)</IncludePath>
+    <IncludePath>E:\file\vsfile\loca_yan\loca_yan;E:\file\vsfile\loca_yan\loca_yan\TooN;D:\sba-1.6;$(OPENCV)\include;$(IncludePath)</IncludePath>
     <LibraryPath>D:\sba-1.6\lib;$(OPENCV)\x64\vc12\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
