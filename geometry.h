@@ -30,8 +30,11 @@ public:
 	//normalize when use DLT method
 	bool Normalize();
 
-	//Compute pose use nonlinear optimization
+	//refine pose use sparse bundle adjustment nonlinear optimization
 	bool RefinePoseSBA(const bool K_fixed);
+
+	//refine pose use TooN
+	bool RefinePoseTooN();
 
 	inline double M3Det(const cv::Matx33d &m) const
 	{

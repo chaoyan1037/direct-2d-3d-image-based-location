@@ -78,5 +78,8 @@
     <ClInclude Include="sba_warper\sba_warper.h">
       <Filter>Source Files\sba_warper</Filter>
     </ClInclude>
+    <ClInclude Include="TrackData_3D.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

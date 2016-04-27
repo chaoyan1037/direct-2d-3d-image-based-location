@@ -72,7 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>D:\sba-1.6;$(OPENCV)\include;$(IncludePath)</IncludePath>
+    <IncludePath>E:\file\vsfile\loca_yan\loca_yan;E:\file\vsfile\loca_yan\loca_yan\TooN;D:\sba-1.6;$(OPENCV)\include;$(IncludePath)</IncludePath>
     <LibraryPath>D:\sba-1.6\lib;$(OPENCV)\x64\vc12\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -197,6 +197,7 @@
     <ClInclude Include="PreProcess\picture.h" />
     <ClInclude Include="sba_warper\sba_warper.h" />
     <ClInclude Include="Timer\timer.h" />
+    <ClInclude Include="TrackData_3D.h" />
     <ClInclude Include="visualwords.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

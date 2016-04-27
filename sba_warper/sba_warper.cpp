@@ -643,58 +643,59 @@ static void img_projKRT_jac(int j, int i, double *aj, double *Aij, void *adata)
 }
 
 
+//para_camera is always 11 double, cnp indicate if fix K
 //assume para_camera: 5 for intrinsics and 3 for rotation and 3 for translation
-bool SbaMotionOnly(double* para_camera, int ncamera, int cnp,
-	char* vmask,
-	double* para_3dpoints, int n3dpoints, int pnp,
-	double* para_2dpoints, int n2dpoints, int mnp)
+bool SbaMotionOnly(sba_warper_data& sba)
 {
-	int  expert = 0, verbose = 1;
+	int expert = 1, verbose = 1;
+	int analyticjac = 1;	/* analytic or approximate jacobian? */
+	int havedist = 0;
+
 	double opts[SBA_OPTSSZ], info[SBA_INFOSZ];
 
 	globs_ globs;
 
 	/* set up globs structure */
-	globs.cnp = cnp; globs.pnp = pnp; globs.mnp = mnp;
-	globs.rot0params = new double[FULLQUATSZ*ncamera];
-	globs.ncamera = ncamera; globs.n3dpoints = n3dpoints;
-	globs.n2dpoints = n2dpoints;
+	globs.cnp = sba.cnp; globs.pnp = sba.pnp; globs.mnp = sba.mnp;
+	globs.rot0params = new double[FULLQUATSZ*sba.ncamera];
+	globs.ncamera = sba.ncamera; globs.n3dpoints = sba.n3dpoints;
+	globs.n2dpoints = sba.n2dpoints;
+	globs.ncdist = -1;
 
+	//estimate intrinsic parameters
+	globs.intrcalib = 0;
+	globs.nccalib = 0; //all parameters [fu, u0, v0, ar, skew] are free, where ar is the aspect ratio fv/fu.
+	
+	int fixedcal = sba.fix_K;	/* varying or fixed intrinsics */
+	if (fixedcal){
+		globs.intrcalib = new double[5];
+		globs.intrcalib[0] = sba.K[0];
+		globs.intrcalib[1] = sba.K[1];
+		globs.intrcalib[2] = sba.K[2];
+		globs.intrcalib[3] = sba.K[3];
+		globs.intrcalib[4] = sba.K[4];
+	}
 	//cnp==11,  5 intrinsics and 3 for rotation(image part of quaternion) and 3 for translation
 	//cnp==6, 3 for rotation and 3 for translation
-	for (int i = 0; i < ncamera; i++){
-		globs.rot0params[i + 1] = para_camera[(i + 1)*cnp - 6];
-		globs.rot0params[i + 2] = para_camera[(i + 1)*cnp - 5];
-		globs.rot0params[i + 3] = para_camera[(i + 1)*cnp - 4];
+	for (int i = 0; i < sba.ncamera; i++){
+		globs.rot0params[i + 1] = sba.para_camera[(i + 1)*sba.cnp - 6];
+		globs.rot0params[i + 2] = sba.para_camera[(i + 1)*sba.cnp - 5];
+		globs.rot0params[i + 3] = sba.para_camera[(i + 1)*sba.cnp - 4];
 		globs.rot0params[i + 0] = std::sqrt(1.0 
 			- globs.rot0params[i + 1] * globs.rot0params[i + 1]
 			- globs.rot0params[i + 2] * globs.rot0params[i + 2]
 			- globs.rot0params[i + 3] * globs.rot0params[i + 3]);
 		/* initialize the local rotation estimates to 0, corresponding to local quats (1, 0, 0, 0) */
-		para_camera[(i + 1)*cnp - 6] = 0.0;
-		para_camera[(i + 1)*cnp - 5] = 0.0;
-		para_camera[(i + 1)*cnp - 4] = 0.0;
+		sba.para_camera[(i + 1)*sba.cnp - 6] = 0.0;
+		sba.para_camera[(i + 1)*sba.cnp - 5] = 0.0;
+		sba.para_camera[(i + 1)*sba.cnp - 4] = 0.0;
 	}
 	
 	//copy the 3d points x y z
-	globs.ptparams = new double[n3dpoints*pnp];
-	memcpy(globs.ptparams, para_3dpoints, n3dpoints*pnp*sizeof(double));
-
+	globs.ptparams = new double[sba.n3dpoints*sba.pnp];
+	memcpy(globs.ptparams, sba.para_3dpoints, sba.n3dpoints*sba.pnp*sizeof(double));
 	globs.camparams = 0;
 	
-	int fixedcal = 0;	/* varying intrinsics */
-	int analyticjac = 0;	/* analytic or approximate jacobian? */
-	int havedist = 0;
-
-	globs.ncdist = -9999;
-
-	//estimate intrinsic parameters
-	globs.intrcalib = 0;
-	globs.nccalib = 0; //all parameters [fu, u0, v0, ar, skew] are free, where ar is the aspect ratio fv/fu.
-
-	expert = 1;
-	analyticjac = 1;
-
 	/* call sparse LM routine */
 	opts[0] = SBA_INIT_MU; opts[1] = SBA_STOP_THRESH; opts[2] = SBA_STOP_THRESH;
 	opts[3] = SBA_STOP_THRESH;
@@ -702,7 +703,7 @@ bool SbaMotionOnly(double* para_camera, int ncamera, int cnp,
 	opts[4] = 0.0;
 	//opts[4]=1E-05; // uncomment to force termination if the relative reduction in the RMS reprojection error drops below 1E-05
 
-	int n = 0, nvars = ncamera*cnp;
+	int n = 0;
 
 	std::ofstream os("sba_warper_debug1.txt", std::ios::out | std::ios::trunc);
 	if (!os){
@@ -713,18 +714,20 @@ bool SbaMotionOnly(double* para_camera, int ncamera, int cnp,
 	
 	cout << "before ba camara_para: ";
 	for (int i = 6; i > 0; i--){
-		cout << para_camera[cnp - i] << " ";
+		cout << sba.para_camera[ 5 + i] << " ";
 	}
 	cout << endl;
 
 	if (expert){
-		n = sba_mot_levmar_x(n3dpoints, ncamera, 0, vmask, para_camera, cnp, para_2dpoints, 0, mnp,
+		n = sba_mot_levmar_x(sba.n3dpoints, sba.ncamera, 0, sba.vmask, 
+			sba.para_camera, sba.cnp, sba.para_2dpoints, 0, sba.mnp,
 			fixedcal ? img_projsRT_x : (havedist ? img_projsKDRT_x : img_projsKRT_x),
 			analyticjac ? (fixedcal ? img_projsRT_jac_x : (havedist ? img_projsKDRT_jac_x : img_projsKRT_jac_x)) : 0,
 			(void *)(&globs), 100, verbose, opts, info);
 	}
 	else{
-		n = sba_mot_levmar(n3dpoints, ncamera, 0, vmask, para_camera, cnp, para_2dpoints, 0, mnp,
+		n = sba_mot_levmar(sba.n3dpoints, sba.ncamera, 0, sba.vmask, 
+			sba.para_camera, sba.cnp, sba.para_2dpoints, 0, sba.mnp,
 			fixedcal ? img_projRT : (havedist ? img_projKDRT : img_projKRT),
 			analyticjac ? (fixedcal ? img_projRT_jac : (havedist ? img_projKDRT_jac : img_projKRT_jac)) : 0,
 			(void *)(&globs), 100, verbose, opts, info);
@@ -740,14 +743,6 @@ bool SbaMotionOnly(double* para_camera, int ncamera, int cnp,
 	7 - stopped by invalid (i.e. NaN or Inf) "func" values. This is a user error
 	*/
 	return (info[6] < 6);
-
-#if 0
-	cout << "after ba camara_para: ";
-	for (int i = 6; i > 0; i--){
-		cout << para_camera[cnp - i] << " ";
-	}
-	cout << endl;
-#endif	
 }
 
 /********************** struct globs_ ****************************/
@@ -803,8 +798,8 @@ sba_warper_data::sba_warper_data(const sba_warper_data&s){
 	n2dpoints = s.n2dpoints;
 	mnp = s.mnp;
 	if (s.para_camera){
-		para_camera = new double[ncamera*cnp];
-		std::memcpy(para_camera, s.para_camera, sizeof(double)*ncamera*cnp);
+		para_camera = new double[ncamera*11];
+		std::memcpy(para_camera, s.para_camera, sizeof(double)*ncamera*11);
 	}
 	if (s.vmask){
 		vmask = new char[ncamera*n3dpoints];

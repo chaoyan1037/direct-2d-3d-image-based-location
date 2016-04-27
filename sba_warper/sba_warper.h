@@ -23,12 +23,6 @@
  void calcDistImgProjJacS(double a[5], double kc[5], double qr0[4], double v[3], double t[3], double M[3], double jacmS[2][3]);
 
 
-//assume para_camera: f d and 3 for rotation and 3 for translation
-bool SbaMotionOnly(double* para_camera, int ncamera, int cnp,
-	char* vmask,
-	double* para_3dpoints, int n3dpoints, int pnp,
-	double* para_2dpoints, int n2dpoints, int mnp);
-
 /* pointers to additional data, used for computed image projections and their jacobians */
 struct globs_
 {
@@ -89,8 +83,8 @@ struct globs_
 
 struct sba_warper_data
 {
-	sba_warper_data():para_camera(0),
-		ncamera(1), cnp(6),vmask(0),
+	sba_warper_data(): fix_K(0), K(0), 
+		para_camera(0), ncamera(1), cnp(6), vmask(0),
 		para_3dpoints(0), n3dpoints(0), pnp(3),
 		para_2dpoints(0), n2dpoints(0), mnp(2)
 	{}
@@ -109,10 +103,12 @@ struct sba_warper_data
 	void swap(sba_warper_data&s);
 
 	void clear(){
+		if (K)				delete[] K;
 		if (para_camera)	delete[] para_camera;
 		if (vmask)			delete[] vmask;
 		if (para_2dpoints)	delete[] para_2dpoints;
 		if (para_3dpoints)	delete[] para_3dpoints;
+		fix_K = 0;
 		ncamera = 0; cnp = 0; 
 		n3dpoints = 0; pnp = 0;
 		n2dpoints = 0; mnp = 0;
@@ -121,6 +117,8 @@ struct sba_warper_data
 	// print the sba data to debug
 	void print(std::ostream& os = std::cout);
 
+	bool fix_K;
+	double* K;
 	double* para_camera;
 	int ncamera, cnp;
 	char* vmask;
@@ -129,5 +127,9 @@ struct sba_warper_data
 	double* para_2dpoints;
 	int n2dpoints, mnp;
 };
+
+//assume para_camera: f d and 3 for rotation and 3 for translation
+bool SbaMotionOnly(sba_warper_data& sba);
+
 
 #endif

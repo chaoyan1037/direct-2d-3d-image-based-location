@@ -13,7 +13,12 @@
 #include <opencv2/stitching.hpp>
 //sparse bundler adjustment include path
 #include "sba.h"
+#include "TooN/TooN.h"
+#include "TooN/se3.h"
+#include "TooN/wls.h"
 
+#include "MEstimator.h"
+#include "TrackData_3D.h"
 #include "geometry.h"
 #include "Timer/timer.h"
 #include "Epnp/epnp.h"
@@ -547,12 +552,24 @@ bool Geometry::RefinePoseSBA(const bool K_fixed)
 
 	sba.pnp = 3;//3 parameters per 3d point
 	sba.mnp = 2;//2 parameters per pixel point
-	sba.ncamera = 1;//refine only one image pose
 	sba.cnp = 6; //ri, rj, rk, tx, ty, tz;
+	sba.ncamera = 1;//refine only one image pose
 
-	//fix intrinsics?
-	if (!K_fixed){
+	//fix intrinsics? then call SbaMotionOnly use cnp to indicate if fix intrinsics
+	if (0 == K_fixed){
 		sba.cnp += 5;//fu u0 v0 ar s
+		sba.fix_K = 0;
+		sba.K = 0;
+	}
+	else{
+		sba.fix_K = 1;
+		sba.K = new double[5];
+		//initiate camera parameters
+		sba.K[0] = K_estimated(0, 0); //fu
+		sba.K[1] = K_estimated(0, 2); //u0
+		sba.K[2] = K_estimated(1, 2); //v0
+		sba.K[3] = K_estimated(1, 1) / K_estimated(0, 0); //ar = fv/fu
+		sba.K[4] = K_estimated(0, 1); //skew
 	}
 
 	sba.n3dpoints = 0;
@@ -565,7 +582,7 @@ bool Geometry::RefinePoseSBA(const bool K_fixed)
 	sba.n2dpoints = sba.n3dpoints;
 	
 	sba.vmask			= new char[sba.ncamera*sba.n3dpoints];
-	sba.para_camera		= new double[sba.ncamera*sba.cnp];
+	sba.para_camera		= new double[sba.ncamera*sba.cnp];//for now it always 11
 	sba.para_3dpoints	= new double[sba.n3dpoints*sba.pnp];
 	sba.para_2dpoints	= new double[sba.n2dpoints*sba.mnp];
 
@@ -590,26 +607,24 @@ bool Geometry::RefinePoseSBA(const bool K_fixed)
 
 	//prepare frame parameter, e.g. 3 for rotation and 3 for translation
 	//if(sba.cnp == 11) add another 5 caribration parameters
-	sba.ncamera = 1;
 	//convert the rotation mat into Quaternion
 	double quat[4];
 	RotationToQuaterion(R, quat);
-
-	//initiate camera parameters
-	sba.para_camera[sba.cnp - 6] = quat[1];
-	sba.para_camera[sba.cnp - 5] = quat[2];
-	sba.para_camera[sba.cnp - 4] = quat[3];
-	sba.para_camera[sba.cnp - 3] = T[0];
-	sba.para_camera[sba.cnp - 2] = T[1];
-	sba.para_camera[sba.cnp - 1] = T[2];
-
-	if (!K_fixed){
+	if (0 == K_fixed){
+		//initiate camera parameters
 		sba.para_camera[0] = K_estimated(0, 0); //fu
 		sba.para_camera[1] = K_estimated(0, 2); //u0
 		sba.para_camera[2] = K_estimated(1, 2); //v0
 		sba.para_camera[3] = K_estimated(1, 1) / K_estimated(0, 0); //ar = fv/fu
 		sba.para_camera[4] = K_estimated(0, 1); //skew
 	}
+
+	sba.para_camera[sba.cnp - 6] = quat[1];
+	sba.para_camera[sba.cnp - 5] = quat[2];
+	sba.para_camera[sba.cnp - 4] = quat[3];
+	sba.para_camera[sba.cnp - 3] = T[0];
+	sba.para_camera[sba.cnp - 2] = T[1];
+	sba.para_camera[sba.cnp - 1] = T[2];
 
 	std::ofstream os("sba_debug1.txt", std::ios::out | std::ios::trunc);
 	if (!os){
@@ -618,17 +633,12 @@ bool Geometry::RefinePoseSBA(const bool K_fixed)
 	sba.print(os);
 	os.close();
 
-	if ( 0 == SbaMotionOnly(sba.para_camera, 
-		sba.ncamera, sba.cnp, sba.vmask,
-		sba.para_3dpoints, sba.n3dpoints, sba.pnp,
-		sba.para_2dpoints, sba.n2dpoints, sba.mnp) )
+	if ( 0 == SbaMotionOnly(sba) )
 	{
 		std::cout << " call SbaMotionOnly fail. " << std::endl;
 		return 0; //fail
 	}
 	
-
-
 	os.open("sba_debug2.txt", std::ios::out | std::ios::trunc);
 	sba.print(os);
 	os.close();
@@ -647,6 +657,117 @@ bool Geometry::RefinePoseSBA(const bool K_fixed)
 
 	return 1;
 }
+
+//refine pose use TooN
+//need K_estimated from DLT to be fixed
+bool Geometry::RefinePoseTooN()
+{
+	using namespace TooN;
+	
+	Matrix<3> R_est, K_est;
+	Vector<3> T_est;
+	for (int i = 0; i < 3; i++){
+		for (int j = 0; j < 3; j++){
+			R_est[i][j] = R(i, j);
+			K_est[i][j] = K_estimated(i, j);
+		}
+		T_est[i] = T[i];
+	}
+
+	SE3<> ini;
+	ini.get_rotation() = R_est;
+	ini.get_translation() = T_est;
+	
+	trackdatalist_3D trackdatalist3d;
+	trackdatalist3d.clear();
+	for (int i = 0; i < match_2d_3d.size(); i++){
+		if (!binlier[i]){
+			continue;
+		}
+		
+		Vector<2> p_image;
+		p_image[0] = match_2d_3d[i].first[0];
+		p_image[1] = match_2d_3d[i].first[1];
+		Vector<3> p_world;
+		p_world[0] = match_2d_3d[i].second[0];
+		p_world[1] = match_2d_3d[i].second[1];
+		p_world[2] = match_2d_3d[i].second[2];
+		trackdata_3D* ptr = new trackdata_3D(p_world, p_image, 0);
+		trackdatalist3d.list.push_back(ptr);
+	}
+
+	Vector<6> poseupdate;
+	if (trackdatalist3d.list.size() < 10){
+		for (int i = 0; i < trackdatalist3d.list.size(); i++){
+			trackdatalist3d.list[i]->projection(ini, K_est);
+		}
+	}
+	else{
+		for (int iter = 0; iter < 20; iter++){
+			bool bnonlinear = false;
+			if (iter == 0 || iter == 4 || iter == 9 || iter == 13 || iter == 17 || iter == 19){
+				bnonlinear = true;
+			}
+			std::vector<double> verrorsquared;
+			WLS<6> wls;
+			wls.add_prior(100.0);
+			if (bnonlinear){
+				for (int i = 0; i < trackdatalist3d.list.size(); i++)
+				{
+					trackdatalist3d.list[i]->projection(ini, K_est);
+					trackdatalist3d.list[i]->CalcJacobian(K_est);
+				}
+			}
+			else{
+				for (int i = 0; i < trackdatalist3d.list.size(); i++){
+					trackdatalist3d.list[i]->linearupdate(poseupdate);
+				}
+			}
+
+			for (int i = 0; i < trackdatalist3d.list.size(); i++){
+				Vector<2> err = trackdatalist3d.list[i]->measurement 
+					- trackdatalist3d.list[i]->reprojection;
+				double errsquared = err*err;
+				verrorsquared.push_back(errsquared);
+			}
+
+			double dsigmasquared = Tukey::FindSigmaSquared(verrorsquared);
+			if (iter>5) dsigmasquared = 49.0;
+
+			for (int i = 0; i < trackdatalist3d.list.size(); i++){
+				Vector<2> err = trackdatalist3d.list[i]->measurement
+					- trackdatalist3d.list[i]->reprojection;
+				double errsquared = err*err;
+				double weight = Tukey::Weight(errsquared, dsigmasquared);
+				wls.add_mJ(err[0], trackdatalist3d.list[i]->mJacobian[0], weight);
+				wls.add_mJ(err[1], trackdatalist3d.list[i]->mJacobian[1], weight);
+			}
+
+			wls.compute();
+			poseupdate = wls.get_mu();
+			ini = SE3<>::exp(poseupdate)*ini;
+		}
+		for (int i = 0; i < trackdatalist3d.list.size(); i++){
+			trackdatalist3d.list[i]->projection(ini, K_est);
+		}
+	}
+	
+	R_est = ini.get_rotation().get_matrix();
+	T_est = ini.get_translation();
+
+	cout << "after refine TooN: " << endl;
+	for (int i = 0; i < 3; i++){
+		for (int j = 0; j < 3; j++){
+			cout << R_est[i][j] << " ";
+		}
+		cout << endl;
+	}
+	cout << T_est[0] << " " << T_est[1] << " ";
+	cout << T_est[2] << endl; 
+	
+	return 1;
+}
+
 
 //unit quaternion are assumed
 //q = w + xi + yj + zk
@@ -714,7 +835,7 @@ const double vc = 240;
 const double fu = 800;
 const double fv = 800;
 const int n = 100;
-const double noise = 3.3;
+const double noise = 2.2;
 
 double rand(double min, double max)
 {
@@ -931,17 +1052,18 @@ void Geometry::TestGeometry(){
 	//for (int i = 0; i < 1000; i++)
 	std::cout << "DLT inlier: " << ComputePoseDLT() << std::endl;
 	GetRT(R_dlt, t_dlt);
-	//R_dlt(0, 0) = -0.3309141827354171; R_dlt(0, 1) = 0.9423555155623323, R_dlt(0, 2) = - 0.04961739567703868;
-	//R_dlt(1, 0) = 0.9432853734951151; R_dlt(1, 1) = 0.3288418387671397, R_dlt(1, 2) = - 0.04556039098161576;
-	//R_dlt(2, 0) = -0.02661781010342863; R_dlt(2, 1) = -0.06187994315985781, R_dlt(2, 2) = -0.9977286027872365;
 	
-	std::cout << "DLT R: " << std::endl << R_dlt << std::endl;
-	std::cout << "DLT t: " << t_dlt << std::endl;
+	std::cout << "DLT R: " << std::endl << R << std::endl;
+	std::cout << "DLT t: " << T << std::endl;
 
-	RefinePoseSBA(0);
-	GetRT(R_dlt, t_dlt);
-	std::cout << "RefinePoseSBA R: " << std::endl << R_dlt << std::endl;
-	std::cout << "RefinePoseSBA t: " << t_dlt << std::endl;
+	std::cout << "refine_sba pose okay? " << RefinePoseSBA(0) << std::endl;
+	std::cout << "RefinePoseSBA R: " << std::endl << R << std::endl;
+	std::cout << "RefinePoseSBA t: " << T << std::endl;
+
+	R = R_dlt; T = t_dlt;
+	std::cout << "refine_sba pose okay? " << RefinePoseTooN() << std::endl;
+	std::cout << "RefinePoseTooN R: " << std::endl << R << std::endl;
+	std::cout << "RefinePoseTooN t: " << T << std::endl;
 
 #endif
 
