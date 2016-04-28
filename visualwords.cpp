@@ -1,9 +1,14 @@
 #include <fstream>
 #include <algorithm>
+#include <vector>
+
+#include <opencv/cv.h>
 
 #include "visualwords.h"
 #include "PreProcess/picture.h"
 #include "Timer/timer.h"
+#include "geometry.h"
+
 
 using namespace std;
 
@@ -105,7 +110,8 @@ VISUALWORDS_3DPOINT_HANDLER::VISUALWORDS_3DPOINT_HANDLER(const std::string &bund
 	const std::string &list_txt,
 	const std::string &bundle_file)
 {
-	mPic_db.SetParameters(bundle_path, list_txt);
+	auto& mPicCam_db = mParse_bundler.GetAllPicturesAndCameras();
+	mPicCam_db.SetParameters(bundle_path, list_txt);
 	mParse_bundler.SetBundleFileName(bundle_file);
 	
 	mFeature_visual_word_correspondence_ratio_test = false;
@@ -121,18 +127,19 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 	Timer timer;
 	timer.Start();
 	//load the database pictures
-	mPic_db.LoadAllPictures();
+	auto& mPicCam_db = mParse_bundler.GetAllPicturesAndCameras();
+	mPicCam_db.LoadAllPictures();
 	timer.Stop();
 	std::cout << "Load database pictures time: " << timer.GetElapsedTimeAsString() << std::endl;
 
 	timer.ReStart();
 	mParse_bundler.ParseBundlerFile();
-	mParse_bundler.LoadCameraInfo(mPic_db);
+	mParse_bundler.LoadCameraInfo();
 	timer.Stop();
 	std::cout << "Parse Bundler file time: " << timer.GetElapsedTimeAsString() << std::endl;
 
-	//after load bundler and execute LoadCameraInfo, release the mPic_db
-	mPic_db.ClearAllPictures();
+	//after load bundler and execute LoadCameraInfo, release the pictures
+	mPicCam_db.ClearPics();
 
 	timer.ReStart();
 	mVW_handler.LoadDBVisualWords();
@@ -261,8 +268,23 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture){
 	//0: can not find enough 2d-3d correspondence
 	if (0 == FindCorrespondence(picture)){
+		std::cout << "not enough putative matches" << std::endl;
 		return 0;
 	}
 
+	Geometry geo;
+	//geo.match_2d_3d
+	auto& mat_2d_3d = geo.ReturnMatch_2d_3d();
+	for (auto pa : mFeature_3d_point_correspondence){
+		auto& pt_2d = picture.GetFeaturePoint()[pa.first];
+		auto& pt_3d = mParse_bundler.GetFeature3DInfo()[pa.second].mPoint;
+		mat_2d_3d.push_back(std::make_pair(
+			cv::Vec2d(pt_2d.x, pt_2d.y),
+			cv::Vec3d(pt_3d.x, pt_3d.y, pt_3d.z)));
+	}
+
+	//if there are no intrinsics then use DLT
+	geo.ComputePoseDLT();
+	
 	return 1;
 }

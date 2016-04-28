@@ -87,7 +87,7 @@ bool PICTURE::LoadKeyPointAndDes(std::string des_filename)
 bool ALL_PICTURES::LoadAllPictures()
 {
 	//first clear all pictures if already loaded
-	ClearAllPictures();
+	ClearPics();
 
 	ifstream infile(mDBpath +'/'+ mPictureListFile, std::ios::in);
 	if (!infile.is_open()){
@@ -111,15 +111,15 @@ bool ALL_PICTURES::LoadAllPictures()
 		pic_keyfilename.push_back(picture_filename);
 	}
 	//clear the pictures and then load pictures;
-	mAll_pictures.clear();
-	mAll_pictures.resize(pic_keyfilename.size());
+	mPictures.clear();
+	mPictures.resize(pic_keyfilename.size());
 	
 
 #pragma omp parallel for
 	for (int i = 0; i < pic_keyfilename.size(); i++)
 	{
 		//load a picture
-		mAll_pictures[i].LoadKeyPointAndDes(mDBpath + "/" + pic_keyfilename[i]);
+		mPictures[i].LoadKeyPointAndDes(mDBpath + "/" + pic_keyfilename[i]);
 	}
 
 	return 1;

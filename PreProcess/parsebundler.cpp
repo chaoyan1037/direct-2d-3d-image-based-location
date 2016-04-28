@@ -16,7 +16,7 @@ PARSE_BUNDLER::PARSE_BUNDLER()
 
 PARSE_BUNDLER::~PARSE_BUNDLER()
 {
-	mCameras.clear();
+	mAll_pic_cameras.ClearPicsCameras();
 	mFeature_infos.clear();
 }
 
@@ -45,7 +45,6 @@ and height of the image).
 
 bool PARSE_BUNDLER::ParseBundlerFile()
 {
-	ClearData();
 	std::ifstream instream(mBundle_file, std::ios::in);
 	if (!instream.is_open()){
 		std::cout << "open bundler fail: " << mBundle_file << std::endl;
@@ -56,6 +55,8 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 	getline(instream, line_in_file);//header
 
 	instream >> mNumCameras >> mNumbPoints;
+
+	auto & mCameras = mAll_pic_cameras.GetAllCameras();
 	mCameras.clear();
 	mCameras.resize(mNumCameras);
 	mFeature_infos.clear();
@@ -114,10 +115,12 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 	return 1;
 }
 
-//load the .key info from ALL_CAMERA
-bool PARSE_BUNDLER::LoadCameraInfo( ALL_PICTURES& all_pics )
+//load the .key info 
+bool PARSE_BUNDLER::LoadCameraInfo()
 {
-	auto& picture = all_pics.GetAllPictures();
+	auto& picture = mAll_pic_cameras.GetAllPictures();
+	//make sure that database #pictures equal to #cameras
+	assert(picture.size() == mAll_pic_cameras.GetAllCameras().size());
 
 #pragma omp parallel for
 	for (int i = 0; i < mNumbPoints; ++i)

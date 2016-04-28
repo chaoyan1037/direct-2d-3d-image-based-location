@@ -69,9 +69,6 @@ public:
 	//build the visual words's index of 3d point 
 	bool BuildIndex3DPoints();
 
-	//database image, used to init the 3d point
-	ALL_PICTURES			mPic_db;
-
 	//ratio test threshold to accept a 3d point as match
 	//i.e. find two two possible 3d points by compare with 
 	//its descriptors and find the most closest descriptor 
@@ -114,7 +111,7 @@ public:
 	bool LocateSinglePicture(const PICTURE& picture);
 
 
-
+	//PARSE_BUNDLER contain database image, used to init the 3d point
 	PARSE_BUNDLER			mParse_bundler;
 	VISUALWORDS_HANDLER		mVW_handler;
 

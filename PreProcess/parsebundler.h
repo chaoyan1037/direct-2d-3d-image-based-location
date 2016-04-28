@@ -169,7 +169,7 @@ public:
 
 	//clear all the data
 	void  ClearData(){
-		mCameras.clear();
+		mAll_pic_cameras.ClearPicsCameras();
 		mFeature_infos.clear();
 		mNumbPoints = 0;
 		mNumCameras = 0;
@@ -180,8 +180,8 @@ public:
 	//the filename of the list of images(usually list.txt)
 	bool ParseBundlerFile();
 
-	//load the .key info from ALL_CAMERA
-	bool LoadCameraInfo( ALL_PICTURES& all_pics);
+	//load the .key info  
+	bool LoadCameraInfo();
 
 	//return the 3d point feature info
 	const std::vector< FEATURE_3D_INFO >& GetFeature3DInfo() const
@@ -189,12 +189,18 @@ public:
 		return mFeature_infos;
 	}
 
+	ALL_PICTURES& GetAllPicturesAndCameras()
+	{
+		return mAll_pic_cameras;
+	}
 private:
 
+	size_t		mNumbPoints, mNumCameras;
+
 	std::string						mBundle_file;
-	std::vector< BUNDLER_CAMERA >	mCameras;
+	ALL_PICTURES					mAll_pic_cameras;
 	std::vector< FEATURE_3D_INFO >	mFeature_infos;
-	size_t mNumbPoints, mNumCameras;
+
 };
 
 #endif

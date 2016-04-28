@@ -88,12 +88,9 @@ public:
 		R_est = R; T_est = T;
 	}
 
-	//save the matched 3d feature(x, y) and 3d point(x, y, z)
-	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_2d_3d;
-	
-	//indicate whether match in match_2d_3d vector is inlier
-	std::vector<bool> binlier;
-
+	std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ReturnMatch_2d_3d(){
+		return match_2d_3d;
+	}
 	//just for test the geometry module
 	void TestGeometry();
 
@@ -128,6 +125,12 @@ private:
 	cv::Matx33d	mat_2d_scaling_inv;
 
 	cv::Matx44d mat_3d_scaling;
+
+	//save the matched 3d feature(x, y) and 3d point(x, y, z)
+	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> match_2d_3d;
+
+	//indicate whether match in match_2d_3d vector is inlier
+	std::vector<bool> binlier;
 };
 
 

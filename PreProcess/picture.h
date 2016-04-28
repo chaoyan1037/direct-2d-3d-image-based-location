@@ -6,6 +6,7 @@
 #include<algorithm>
 #include<opencv2/opencv.hpp>
 
+#include "bundlercamera.h"
 /*
 *	PICTURE class to store key point and descriptor
 *	for a picture from .key file
@@ -60,6 +61,7 @@ struct SIFT_Descriptor
 
 	//copy assignment
 	SIFT_Descriptor& operator=(const SIFT_Descriptor&d){
+		//std::cout << " sift desc copy assignment" << std::endl;
 		if (this != &d){
 			ClearDesc();
 			if (d.ptrDesc != 0){
@@ -80,6 +82,7 @@ struct SIFT_Descriptor
 	//move assignment 
 	SIFT_Descriptor& operator=(SIFT_Descriptor&&d) NOEXCEPT
 	{
+		//std::cout << " sift desc move assignment" << std::endl;
 		if (this != &d){
 			ClearDesc();
 			ptrDesc = d.ptrDesc;
@@ -115,23 +118,31 @@ public:
 	void ClearData();
 
 	//return the key points
+	std::vector<SIFT_KeyPoint>& GetFeaturePoint(){
+		return mFeature_points;
+	}
 	const std::vector<SIFT_KeyPoint>& GetFeaturePoint()const{
 		return mFeature_points;
 	}
 
 	//return the descriptor, store as chars
+	std::vector<SIFT_Descriptor>& GetDescriptor() {
+		return mDescriptors;
+	}
 	const std::vector<SIFT_Descriptor>& GetDescriptor() const{
 		return mDescriptors;
 	}
 
 private:
 
-	size_t							 mKeypoint_num;//total num of descriptors
-	size_t							 mDes_length;//128 for sift
-	std::vector<SIFT_KeyPoint>		 mFeature_points;//origin is the left-up corner
-	std::vector<SIFT_Descriptor>	 mDescriptors;
+	size_t							mKeypoint_num;//total num of descriptors
+	size_t							mDes_length;//128 for sift
+	std::vector<SIFT_KeyPoint>		mFeature_points;//origin is the left-up corner
+	std::vector<SIFT_Descriptor>	mDescriptors;
+
 };
 
+//contain pictures and cameras
 class ALL_PICTURES
 {
 public:
@@ -147,24 +158,39 @@ public:
 	bool LoadAllPictures();
 
 	//clear all picture
-	void ClearAllPictures(){
-		mAll_pictures.clear();
+	void ClearPicsCameras(){
+		mPictures.clear();
+		mCameras.clear();
 	}
+
+	void ClearPics(){mPictures.clear();}
+	void ClearCameras(){mCameras.clear();}
 
 	//set the string contents
 	bool SetParameters(const std::string& model_path, const std::string &list);
 
 	//return all pictures
-	const std::vector<PICTURE>& GetAllPictures() const
-	{
-		return mAll_pictures;
+	std::vector<PICTURE>& GetAllPictures(){
+		return mPictures;
+	}
+	const std::vector<PICTURE>& GetAllPictures()const{
+		return mPictures;
+	}
+
+	//return all pictures
+	std::vector<BUNDLER_CAMERA>& GetAllCameras(){
+		return mCameras;
+	}
+	const std::vector<BUNDLER_CAMERA>& GetAllCameras() const{
+		return mCameras;
 	}
 
 private:
 
 	std::string						mDBpath;//the model database path
 	std::string						mPictureListFile;//a txt file store the picture name
-	std::vector<PICTURE>			mAll_pictures;//vector store all pictures database or query
+	std::vector< PICTURE >			mPictures;//vector store all pictures database or query
+	std::vector< BUNDLER_CAMERA >	mCameras;
 };
 
 
