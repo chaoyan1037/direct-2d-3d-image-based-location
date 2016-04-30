@@ -84,10 +84,16 @@ public:
 	void SetK(const cv::Matx33d& Ki);
 
 	//get estimated R and T
-	void GetRT(cv::Matx33d& R_est, cv::Vec3d& T_est) const{
+	void GetRT(cv::Matx33d& R_est, cv::Vec3d& T_est) {
 		R_est = R; T_est = T;
 	}
-
+	const void GetRT(cv::Matx33d& R_est, cv::Vec3d& T_est) const{
+		R_est = R; T_est = T;
+	}
+	//get the match_2d_3d
+	const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ReturnMatch_2d_3d() const{
+		return match_2d_3d;
+	}
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ReturnMatch_2d_3d(){
 		return match_2d_3d;
 	}

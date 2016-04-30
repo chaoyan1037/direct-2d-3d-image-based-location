@@ -125,12 +125,47 @@ bool ALL_PICTURES::LoadAllPictures()
 	return 1;
 }
 
-
-
 //set the string contents
 bool ALL_PICTURES::SetParameters(const std::string& model_path, const std::string &list)
 {
 	mDBpath = model_path;
 	mPictureListFile = list;
+	return 1;
+}
+
+//load the camera pose ground truth from bundler.query.out
+bool ALL_PICTURES::LoadCamerasPose(const std::string& s){
+	std::ifstream instream(s, std::ios::in);
+	if (!instream.is_open()){
+		std::cout << "open bundler fail: " << s << std::endl;
+		return 0;
+	}
+	string line;
+	getline(instream, line);//header
+
+	int num_cam = 0, num_points = 0;
+	instream >> num_cam >> num_points;
+	mCameras.resize(num_cam);
+
+	for (size_t i = 0; i < num_cam; i++){
+		instream >> mCameras[i].focal_length
+			>> mCameras[i].k1 >> mCameras[i].k2;
+
+		instream >> mCameras[i].rotation(0, 0)
+			>> mCameras[i].rotation(0, 1)
+			>> mCameras[i].rotation(0, 2)
+			>> mCameras[i].rotation(1, 0)
+			>> mCameras[i].rotation(1, 1)
+			>> mCameras[i].rotation(1, 2)
+			>> mCameras[i].rotation(2, 0)
+			>> mCameras[i].rotation(2, 1)
+			>> mCameras[i].rotation(2, 2);
+
+		instream >> mCameras[i].translation(0)
+			>> mCameras[i].translation(1)
+			>> mCameras[i].translation(2);
+	}
+
+	instream.close();
 	return 1;
 }

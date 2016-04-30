@@ -13,7 +13,7 @@
 using namespace std;
 
 //get the number of database total visual words
-int VISUALWORDS_HANDLER::GetNumVisualWords() const
+const int VISUALWORDS_HANDLER::GetNumVisualWords() const
 {
 	return mNum_visualwords;
 }
@@ -79,6 +79,9 @@ bool VISUALWORDS_HANDLER::KnnSearch(const vector<SIFT_Descriptor>& query_des,
 }
 
 
+/********** class VISUALWORDS_3DPOINT_HANDLER**************/
+
+
 //build the visual words's index of 3d point 
 bool VISUALWORDS_3DPOINT_HANDLER::BuildIndex3DPoints()
 {
@@ -104,7 +107,73 @@ bool VISUALWORDS_3DPOINT_HANDLER::BuildIndex3DPoints()
 	return 1;
 }
 
-/********** class VISUALWORDS_3DPOINT_HANDLER**************/
+//after build the index, then save it into file.
+//format:
+//num_of_records
+//visual_words_index pair(i1, j1)... pair(in, jn)
+//...
+bool VISUALWORDS_3DPOINT_HANDLER::SaveIndex3DPoints(const std::string&s) const
+{
+	std::ofstream of(s, std::ios::out | std::ios::trunc);
+	if (0 == of.is_open()){
+		std::cerr << " open index_3d_points file fail: " << s << std::endl;
+		return 0;
+	}
+
+	size_t num_non_empty = 0;
+	size_t num_visualwords = mVisualwords_index_3d.size();
+	for (size_t i = 0; i < num_visualwords; i++){
+		if (0 == mVisualwords_index_3d[i].empty()){
+			num_non_empty++;
+		}
+	}
+
+	of << num_non_empty << std::endl;
+	for (size_t i = 0; i < num_visualwords; i++){
+		if (0 == mVisualwords_index_3d[i].empty()){
+			of << i << " ";
+			for (auto pairii : mVisualwords_index_3d[i]){
+				of << pairii.first << " " << pairii.second << " ";
+			}
+			of << std::endl;
+		}
+	}
+
+	of.close();
+	return 1;
+}
+
+bool VISUALWORDS_3DPOINT_HANDLER::LoadIndex3DPoints(const std::string& s)
+{
+	std::ifstream is(s, std::ios::in);
+	if (0 == is.is_open()){
+		std::cerr << " open index_3d_points file fail: " << s << std::endl;
+		return 0;
+	}
+	size_t num_VM_records = 0;
+	is >> num_VM_records;
+	assert(mVW_handler.GetNumVisualWords() >= num_VM_records);
+	mVisualwords_index_3d.resize(mVW_handler.GetNumVisualWords());
+	//std::vector<std::set<std::pair<int, int>, compareFunc>> mVisualwords_index_3d;
+	std::string line;
+	size_t VW_index = 0;
+	for (size_t i = 0; i < num_VM_records; i++){
+		is >> VW_index;
+		getline(is, line);
+		istringstream istream(line);
+		int num_1 = 0, num_2 = 0;
+		while (istream>>num_1)
+		{
+			if (istream >> num_2){
+				mVisualwords_index_3d[VW_index].insert(std::make_pair(num_1, num_2));
+			}
+			else return 0;
+		}
+	}
+	is.close();
+	return 1;
+}
+
 //constructor
 VISUALWORDS_3DPOINT_HANDLER::VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path,
 	const std::string &list_txt,
@@ -148,7 +217,16 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 	
 	timer.ReStart();
 	mVW_handler.BuildIndex();
-	BuildIndex3DPoints();
+	ifstream is("index_3dpoints.txt", std::ios::_Nocreate);
+	if (1 == is.is_open() && LoadIndex3DPoints("index_3dpoints.txt"))
+	{
+		cout << "load index_3dpoints.txt" << endl;
+	}
+	else{
+		BuildIndex3DPoints();
+		SaveIndex3DPoints("index_3dpoints.txt");
+		cout << "build index and save index_3dpoints.txt" << endl;
+	}
 	timer.Stop();
 	std::cout << "Build visual words index time: " << timer.GetElapsedTimeAsString() << std::endl;
 
@@ -164,8 +242,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 	auto& pic_feat_desc = picture.GetDescriptor();
 
 	mFeature_3d_point_correspondence.clear();
-	mFeature_3d_point_correspondence_mask.clear();
-	mFeature_3d_point_correspondence_mask.resize(pic_feat_desc.size(), true);
+	mFeature_3d_point_correspondence_mask.assign(pic_feat_desc.size(), true);
 
 	cv::Mat indices, dists;
 	if (mFeature_visual_word_correspondence_ratio_test){
@@ -197,7 +274,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 	//for matched visual words, find feature's matched 3d points
 	for (int i = 0; i < indices.rows; i++)
 	{
-		if (!mFeature_3d_point_correspondence_mask[i] || cnt_matched_feature > mMaxNumberCorrespondence) continue;
+		if (false == mFeature_3d_point_correspondence_mask[i] || cnt_matched_feature > mMaxNumberCorrespondence) continue;
 
 		//first let the mask be false
 		mFeature_3d_point_correspondence_mask[i] = false;
@@ -213,16 +290,16 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 		{
 			int index_3d_point = pair_3d_point.first;
 			const FEATURE_3D_INFO &feat_3d_info = mParse_bundler.GetFeature3DInfo()[index_3d_point];
-			const std::vector<SIFT_Descriptor>& _3d_point_feat_desc = feat_3d_info.mDescriptor;
+			const std::vector<SIFT_Descriptor>& point_3d_feat_desc = feat_3d_info.mDescriptor;
 			
 			//for each 3d point, find all its descriptors
 			//find one smallest distance represent this 3d point
 			//only record the squared distance, since the index is index_3d_point
 			int min_distance_squared_each_3d_point = 100000000;
-			for (int j = 0; j < _3d_point_feat_desc.size(); j++)
+			for (int j = 0; j < point_3d_feat_desc.size(); j++)
 			{
 				using std::min;
-				int distsq_temp = CalculateSIFTDistanceSquared(pic_feat_desc[i].ptrDesc, _3d_point_feat_desc[j].ptrDesc);
+				int distsq_temp = CalculateSIFTDistanceSquared(pic_feat_desc[i].ptrDesc, point_3d_feat_desc[j].ptrDesc);
 				min_distance_squared_each_3d_point = min(distsq_temp, min_distance_squared_each_3d_point);
 			}
 
@@ -244,7 +321,8 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 		//after find two putative matched 3d points do ratio test     
 		//mFeature_3d_point_correspondence_ratio_test_thres
 		//Check whether closest distance is less than 0.7 of second.
-		if (min_distance_3d_point_index[1] > 0 && 10 * 10 * min_distance_squared[0] < 7 * 7 * min_distance_squared[1])
+		if (min_distance_3d_point_index[1] > 0 && 
+			10 * 10 * min_distance_squared[0] < 7 * 7 * min_distance_squared[1])
 		{
 			mFeature_3d_point_correspondence_mask[i] = true;
 			mFeature_3d_point_correspondence.push_back(make_pair(i, min_distance_3d_point_index[0]));
@@ -252,7 +330,6 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 			#pragma omp atomic 
 			++cnt_matched_feature;
 		}
-
 	}
 
 	//no enough correspondence, location fail
@@ -261,11 +338,14 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 		mFeature_3d_point_correspondence_mask.clear();
 		return 0;
 	}
+
 	else return 1;
 }
 
 //the public function to locate a single picture
-bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture){
+bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture,
+	BUNDLER_CAMERA& camera)
+{
 	//0: can not find enough 2d-3d correspondence
 	if (0 == FindCorrespondence(picture)){
 		std::cout << "not enough putative matches" << std::endl;
@@ -284,7 +364,20 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture){
 	}
 
 	//if there are no intrinsics then use DLT
-	geo.ComputePoseDLT();
+	if ( geo.ComputePoseDLT() == 0 ) return 0;
 	
+	geo.GetRT(camera.rotation, camera.translation);
+
+
 	return 1;
+}
+
+void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const std::vector< PICTURE >& pic_query,
+	std::vector< BUNDLER_CAMERA >& cam_pose_estimate,
+	std::vector< bool >& camera_pose_mask)
+{
+	
+	for (size_t i = 0; i < pic_query.size(); i++){
+		camera_pose_mask[i] = LocateSinglePicture(pic_query[i], cam_pose_estimate[i]);
+	}
 }

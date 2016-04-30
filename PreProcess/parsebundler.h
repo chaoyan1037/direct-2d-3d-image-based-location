@@ -152,6 +152,8 @@ public:
 
 	~PARSE_BUNDLER();
 
+	PARSE_BUNDLER(const std::string &s) :mBundle_file(s), mNumbPoints(0), mNumCameras(0){}
+
 	//set the bundler file name
 	void SetBundleFileName(const std::string &s){
 		mBundle_file = s;
@@ -184,23 +186,39 @@ public:
 	bool LoadCameraInfo();
 
 	//return the 3d point feature info
+	std::vector< FEATURE_3D_INFO >& GetFeature3DInfo()
+	{
+		return mFeature_infos;
+	}
 	const std::vector< FEATURE_3D_INFO >& GetFeature3DInfo() const
 	{
 		return mFeature_infos;
 	}
-
+	//return the pictures and cameras
 	ALL_PICTURES& GetAllPicturesAndCameras()
 	{
 		return mAll_pic_cameras;
 	}
+	const ALL_PICTURES& GetAllPicturesAndCameras()const
+	{
+		return mAll_pic_cameras;
+	}
+
+	//after load original bundler file, mark the query image
+	void FindQueryPicture(const std::string& s);
+	void WriteQueryBundler(const std::string& s) const;
+
 private:
 
 	size_t		mNumbPoints, mNumCameras;
 
 	std::string						mBundle_file;
-	ALL_PICTURES					mAll_pic_cameras;
 	std::vector< FEATURE_3D_INFO >	mFeature_infos;
+	//All_PICTUREs member include pictures and cameras
+	ALL_PICTURES					mAll_pic_cameras;
 
+	//mask the query image as 1
+	std::vector< bool >				mPic_query_mask;
 };
 
 #endif

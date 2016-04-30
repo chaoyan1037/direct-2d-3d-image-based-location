@@ -4,9 +4,17 @@
 #include <string.h>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <utility>
 
-using namespace std;
+//using namespace std;
+using std::ifstream;
+using std::ofstream;
+using std::istringstream;
+using std::cout;
+using std::endl;
+using std::string;
+
 
 PARSE_BUNDLER::PARSE_BUNDLER()
 {
@@ -57,9 +65,9 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 	instream >> mNumCameras >> mNumbPoints;
 
 	auto & mCameras = mAll_pic_cameras.GetAllCameras();
-	mCameras.clear();
+	//mCameras.clear();
 	mCameras.resize(mNumCameras);
-	mFeature_infos.clear();
+	//mFeature_infos.clear();
 	mFeature_infos.resize(mNumbPoints);
 
 	//load the camera parameters 
@@ -82,9 +90,9 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 			>> mCameras[i].translation(1)
 			>> mCameras[i].translation(2);
 		
-		mCameras[i].id = i;
+		//mCameras[i].id = i;
 	}
-
+	//return 1;
 	//load the points
 	int r, g, b;
 	for (int i = 0; i < mNumbPoints; i++)
@@ -143,4 +151,71 @@ bool PARSE_BUNDLER::LoadCameraInfo()
 	}
 
 	return 1;
+}
+
+
+//after load original bundler file, mask the query image
+void PARSE_BUNDLER::FindQueryPicture(const std::string& s)
+{
+	ifstream is(s, std::ios::in);
+	if (is.is_open() == 0){
+		std::cerr << "query_picture_list.txt open fail: "<< s << endl;
+		return;
+	}
+
+	mPic_query_mask.clear();
+	string line;
+	while (is >> line)
+	{
+		//stringstream istrstream;
+		mPic_query_mask.push_back( line[0] == 'q' );
+	}
+
+}
+
+//
+void PARSE_BUNDLER::WriteQueryBundler(const std::string& s) const
+{
+	ofstream os(s, std::ios::out | std::ios::trunc);
+	if (0 == os.is_open()){
+		std::cerr << " open query bundle file fail: " << s << endl;
+		return;
+	}
+
+	auto & mCameras = mAll_pic_cameras.GetAllCameras();
+
+	os << "# Bundle file v0.3" << endl;
+
+	size_t num_cam = 0;
+	//count to number of cameras
+	for (size_t i = 0; i < mPic_query_mask.size(); i++){
+		if (1 == mPic_query_mask[i])
+			num_cam++;
+	}
+	os << num_cam << " " << int(0) << endl;
+
+	for (size_t i = 0; i < mPic_query_mask.size(); i++){
+		if (1 == mPic_query_mask[i]){
+			os  << mCameras[i].focal_length 
+				<< mCameras[i].k1 << mCameras[i].k2 
+				<< endl;
+			os  << mCameras[i].rotation(0, 0)
+				<< mCameras[i].rotation(0, 1)
+				<< mCameras[i].rotation(0, 2) 
+				<< endl;
+			os  << mCameras[i].rotation(1, 0)
+				<< mCameras[i].rotation(1, 1)
+				<< mCameras[i].rotation(1, 2) 
+				<< endl;
+			os  << mCameras[i].rotation(2, 0)
+				<< mCameras[i].rotation(2, 1)
+				<< mCameras[i].rotation(2, 2) 
+				<< endl;
+			os  << mCameras[i].translation(0)
+				<< mCameras[i].translation(1)
+				<< mCameras[i].translation(2) 
+				<< endl;
+		}
+	}
+	os.close();
 }

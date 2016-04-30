@@ -11,18 +11,18 @@ struct  BUNDLER_CAMERA
 {
 	cv::Matx33d	rotation;
 	cv::Vec3d	translation;
+	
 	double		focal_length;
 	double		k1, k2;
-
-	size_t		id;
+	
 	int			width, height;
+
 	BUNDLER_CAMERA(){
 		rotation.zeros();
 		translation.zeros();
-		focal_length = 0;
-		k1 = k2 = 0;
-		id = 0;
-		width = height = 0;
+		focal_length = -1;
+		k1 = k2 = -1;
+		width = height = -1;
 	}
 };
 

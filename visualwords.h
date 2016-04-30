@@ -27,7 +27,7 @@ public:
 	~VISUALWORDS_HANDLER(){};
 	
 	//get the number of database total visual words
-	int GetNumVisualWords() const;
+	const int GetNumVisualWords() const;
 
 	//load the db visual words (100k)
 	bool LoadDBVisualWords();
@@ -61,19 +61,32 @@ private:
 class VISUALWORDS_3DPOINT_HANDLER
 {
 //this should be private, public for debug
-//private:
-public:
+private:
+//public:
 	//find 2d-3d corresponding in Function LocateSinglePicture()
 	bool FindCorrespondence(const PICTURE& picture);
 
+	//Do query for a single picture
+	bool LocateSinglePicture(const PICTURE& picture, 
+		BUNDLER_CAMERA& camera);
+
 	//build the visual words's index of 3d point 
 	bool BuildIndex3DPoints();
+
+	//save and load the index
+	//format:
+	//num_of_records
+	//visual_words_index pair(i1, j1)... pair(in, jn)
+	//...
+	bool SaveIndex3DPoints(const std::string& s) const;
+	bool LoadIndex3DPoints(const std::string& s);
+
 
 	//ratio test threshold to accept a 3d point as match
 	//i.e. find two two possible 3d points by compare with 
 	//its descriptors and find the most closest descriptor 
 	//as the represent of this 3d point. then do ratio test
-	//float  mFeature_3d_point_correspondence_ratio_test_thres;
+	float  mFeature_3d_point_correspondence_ratio_test_thres;
 
 	//whether do ratio test when find feature's visual word?
 	//in general, it is unnecessary since we just find the nearest one.
@@ -107,9 +120,10 @@ public:
 	//inti, load database image, 3d points, and visual words
 	bool Init();
 
-	//Do query for a single picture
-	bool LocateSinglePicture(const PICTURE& picture);
-
+	//locate all query images, call private LocateSinglePicture()
+	void LocatePictures(const std::vector< PICTURE >& pic_query,
+		std::vector< BUNDLER_CAMERA >& cam_pose_estimate,
+		std::vector< bool >& camera_pose_mask);
 
 	//PARSE_BUNDLER contain database image, used to init the 3d point
 	PARSE_BUNDLER			mParse_bundler;

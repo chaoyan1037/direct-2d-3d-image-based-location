@@ -156,6 +156,8 @@ public:
 
 	//load all picture from the list
 	bool LoadAllPictures();
+	//load the camera pose ground truth
+	bool LoadCamerasPose(const std::string& s);
 
 	//clear all picture
 	void ClearPicsCameras(){
