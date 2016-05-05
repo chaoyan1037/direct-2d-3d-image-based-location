@@ -96,10 +96,10 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_SCL_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <OpenMPSupport>true</OpenMPSupport>
-      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4819;4396;4267;4244</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -137,10 +137,10 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <OpenMPSupport>false</OpenMPSupport>
-      <DisableSpecificWarnings>4819</DisableSpecificWarnings>
+      <DisableSpecificWarnings>4819;4244;4267;4396</DisableSpecificWarnings>
       <AdditionalIncludeDirectories>
       </AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
@@ -178,6 +178,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Epnp\epnp.cpp" />
+    <ClCompile Include="exif_reader\exif_reader.cpp" />
+    <ClCompile Include="exif_reader\jhead-2.90\exif.cpp" />
+    <ClCompile Include="exif_reader\jhead-2.90\gpsinfo.cpp" />
+    <ClCompile Include="exif_reader\jhead-2.90\iptc.cpp" />
+    <ClCompile Include="exif_reader\jhead-2.90\jhead.cpp" />
+    <ClCompile Include="exif_reader\jhead-2.90\jpgfile.cpp" />
+    <ClCompile Include="exif_reader\jhead-2.90\makernote.cpp" />
+    <ClCompile Include="exif_reader\jhead-2.90\paths.cpp" />
     <ClCompile Include="geometry.cpp" />
     <ClCompile Include="PreProcess\bundlercamera.cpp" />
     <ClCompile Include="PreProcess\parsebundler.cpp" />
@@ -190,6 +198,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Epnp\epnp.h" />
+    <ClInclude Include="exif_reader\exif_reader.h" />
+    <ClInclude Include="exif_reader\jhead-2.90\jhead.h" />
     <ClInclude Include="geometry.h" />
     <ClInclude Include="MEstimator.h" />
     <ClInclude Include="PreProcess\bundlercamera.h" />

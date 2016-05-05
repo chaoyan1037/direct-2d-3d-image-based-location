@@ -9,9 +9,9 @@
 
 #include "geometry.h"
 #include "visualwords.h"
-#include "PreProcess/picture.h"
-#include "PreProcess/bundlercamera.h"
-#include "PreProcess/parsebundler.h"
+#include "preprocess/picture.h"
+#include "preprocess/bundlercamera.h"
+#include "preprocess/parsebundler.h"
 
 
 using namespace cv;
@@ -40,8 +40,10 @@ int main(int * argc, char** argv)
 
 
 	//define query images:
-	ALL_PICTURES pic_query("D:/bundlerSIFT/examples/statue/", "list_query.txt");
-	pic_query.LoadAllPictures();
+	ALL_PICTURES pic_query("D:/bundlerSIFT/examples/statue", "list_query.txt");
+	pic_query.SetQueryFlag(true);
+	pic_query.LoadPicturesKeyFile();
+
 	//load the query images pose ground truth
 	pic_query.LoadCamerasPose("D:/bundlerSIFT/examples/statue/bundle/bundle.query.out");
 
@@ -50,7 +52,6 @@ int main(int * argc, char** argv)
 	std::vector< bool >				camera_pose_mask(pic_query.GetAllPictures().size(), false);
 
 	vw_3d_point_handler.LocatePictures(pic_query.GetAllPictures(), camera_pose_estimated, camera_pose_mask);
-
 
 	return 1;
 }

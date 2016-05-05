@@ -197,7 +197,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 	timer.Start();
 	//load the database pictures
 	auto& mPicCam_db = mParse_bundler.GetAllPicturesAndCameras();
-	mPicCam_db.LoadAllPictures();
+	mPicCam_db.LoadPicturesKeyFile();
 	timer.Stop();
 	std::cout << "Load database pictures time: " << timer.GetElapsedTimeAsString() << std::endl;
 
@@ -381,3 +381,5 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const std::vector< PICTURE >& p
 		camera_pose_mask[i] = LocateSinglePicture(pic_query[i], cam_pose_estimate[i]);
 	}
 }
+
+

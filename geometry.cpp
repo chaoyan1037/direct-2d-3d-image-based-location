@@ -269,7 +269,7 @@ int Geometry::ComputePoseDLT(){
 	const int match_num = (int)match_2d_3d.size();
 	
 	std::cout << "match_num when compute pose is: " << match_num << std::endl;
-	if (match_num < 12){ return 0; std::cout << "not enough match_num" << std::endl; }
+	if (match_num < 12){ return 0; std::cout << "not enough match_num " << std::endl; }
 
 	cv::Matx34d P_inlier;
 

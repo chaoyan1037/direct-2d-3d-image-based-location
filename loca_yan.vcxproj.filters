@@ -5,17 +5,23 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Source Files\Epnp">
-      <UniqueIdentifier>{d1f861ff-93f4-45dd-aee8-7841fabf25e7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\Timer">
-      <UniqueIdentifier>{5b9e0f8a-3979-4d4e-ac86-42d9446396b4}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\PreProcess">
-      <UniqueIdentifier>{c1d7a836-0916-4486-ae46-5d9622db3102}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\sba_warper">
       <UniqueIdentifier>{302c1fe8-4bca-4d4d-ba3c-f21f7a773330}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\epnp">
+      <UniqueIdentifier>{d1f861ff-93f4-45dd-aee8-7841fabf25e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\preprocess">
+      <UniqueIdentifier>{c1d7a836-0916-4486-ae46-5d9622db3102}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\timer">
+      <UniqueIdentifier>{5b9e0f8a-3979-4d4e-ac86-42d9446396b4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\exif_reader">
+      <UniqueIdentifier>{32388f06-dcaa-46b5-9269-f4503afc4851}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\exif_reader\jhead-2.90">
+      <UniqueIdentifier>{c6cba981-4665-4f62-90b4-728b23a176f2}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -29,25 +35,49 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Epnp\epnp.cpp">
-      <Filter>Source Files\Epnp</Filter>
+      <Filter>Source Files\epnp</Filter>
     </ClCompile>
     <ClCompile Include="Timer\timer.cpp">
-      <Filter>Source Files\Timer</Filter>
+      <Filter>Source Files\timer</Filter>
     </ClCompile>
     <ClCompile Include="PreProcess\bundlercamera.cpp">
-      <Filter>Source Files\PreProcess</Filter>
+      <Filter>Source Files\preprocess</Filter>
     </ClCompile>
     <ClCompile Include="PreProcess\parsebundler.cpp">
-      <Filter>Source Files\PreProcess</Filter>
+      <Filter>Source Files\preprocess</Filter>
     </ClCompile>
     <ClCompile Include="PreProcess\picture.cpp">
-      <Filter>Source Files\PreProcess</Filter>
+      <Filter>Source Files\preprocess</Filter>
     </ClCompile>
     <ClCompile Include="sba_warper\sba_imgproj.cpp">
       <Filter>Source Files\sba_warper</Filter>
     </ClCompile>
     <ClCompile Include="sba_warper\sba_warper.cpp">
       <Filter>Source Files\sba_warper</Filter>
+    </ClCompile>
+    <ClCompile Include="exif_reader\exif_reader.cpp">
+      <Filter>Source Files\exif_reader</Filter>
+    </ClCompile>
+    <ClCompile Include="exif_reader\jhead-2.90\exif.cpp">
+      <Filter>Source Files\exif_reader\jhead-2.90</Filter>
+    </ClCompile>
+    <ClCompile Include="exif_reader\jhead-2.90\gpsinfo.cpp">
+      <Filter>Source Files\exif_reader\jhead-2.90</Filter>
+    </ClCompile>
+    <ClCompile Include="exif_reader\jhead-2.90\iptc.cpp">
+      <Filter>Source Files\exif_reader\jhead-2.90</Filter>
+    </ClCompile>
+    <ClCompile Include="exif_reader\jhead-2.90\jhead.cpp">
+      <Filter>Source Files\exif_reader\jhead-2.90</Filter>
+    </ClCompile>
+    <ClCompile Include="exif_reader\jhead-2.90\jpgfile.cpp">
+      <Filter>Source Files\exif_reader\jhead-2.90</Filter>
+    </ClCompile>
+    <ClCompile Include="exif_reader\jhead-2.90\makernote.cpp">
+      <Filter>Source Files\exif_reader\jhead-2.90</Filter>
+    </ClCompile>
+    <ClCompile Include="exif_reader\jhead-2.90\paths.cpp">
+      <Filter>Source Files\exif_reader\jhead-2.90</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -58,19 +88,19 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Epnp\epnp.h">
-      <Filter>Source Files\Epnp</Filter>
+      <Filter>Source Files\epnp</Filter>
     </ClInclude>
     <ClInclude Include="Timer\timer.h">
-      <Filter>Source Files\Timer</Filter>
+      <Filter>Source Files\timer</Filter>
     </ClInclude>
     <ClInclude Include="PreProcess\bundlercamera.h">
-      <Filter>Source Files\PreProcess</Filter>
+      <Filter>Source Files\preprocess</Filter>
     </ClInclude>
     <ClInclude Include="PreProcess\parsebundler.h">
-      <Filter>Source Files\PreProcess</Filter>
+      <Filter>Source Files\preprocess</Filter>
     </ClInclude>
     <ClInclude Include="PreProcess\picture.h">
-      <Filter>Source Files\PreProcess</Filter>
+      <Filter>Source Files\preprocess</Filter>
     </ClInclude>
     <ClInclude Include="MEstimator.h">
       <Filter>Source Files</Filter>
@@ -80,6 +110,12 @@
     </ClInclude>
     <ClInclude Include="TrackData_3D.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="exif_reader\exif_reader.h">
+      <Filter>Source Files\exif_reader</Filter>
+    </ClInclude>
+    <ClInclude Include="exif_reader\jhead-2.90\jhead.h">
+      <Filter>Source Files\exif_reader\jhead-2.90</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

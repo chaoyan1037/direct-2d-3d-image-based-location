@@ -98,8 +98,9 @@ class PICTURE
 {
 public:
 	//default constructor
-	PICTURE(){};
-	~PICTURE(){ ClearData(); };
+	PICTURE();
+
+	~PICTURE();
 
 	//copy constructor
 	//PICTURE(const PICTURE &pic);
@@ -108,8 +109,13 @@ public:
 	//PICTURE& operator=(const PICTURE &pic);
 
 	//load descriptor from the .key file
-	bool LoadKeyPointAndDes(std::string des_filename);
+	bool LoadKeyPointAndDes(const std::string& des_filename, bool bCenter_image);
 	
+	//set size
+	void SetImageSize(const size_t height, const size_t width);
+	//get size
+	void GetImageSize(size_t& height, size_t& width) const;
+
 	//the num of feature points of the picture
 	size_t PointsNum() const
 	{ return mFeature_points.size(); } ;
@@ -134,10 +140,14 @@ public:
 	}
 
 private:
-
+	size_t							mImageHeight;
+	size_t							mImgaeWidth;
 	size_t							mKeypoint_num;//total num of descriptors
 	size_t							mDes_length;//128 for sift
-	std::vector<SIFT_KeyPoint>		mFeature_points;//origin is the left-up corner
+	//origin is the left-up corner
+	//for query image, make the center as origin with known image size
+	//for data base image, just leave it without using x, y
+	std::vector<SIFT_KeyPoint>		mFeature_points;
 	std::vector<SIFT_Descriptor>	mDescriptors;
 
 };
@@ -146,18 +156,25 @@ private:
 class ALL_PICTURES
 {
 public:
+	//default constructor, set empty
+	ALL_PICTURES();
 
-	ALL_PICTURES() :mDBpath(""), mPictureListFile(""){};
+	//set only key file path and list file path 
+	ALL_PICTURES(const std::string& key, const std::string &list);
 
-	ALL_PICTURES(const std::string& model_path, const std::string &list) 
-		:mDBpath(model_path), mPictureListFile(list){};
+	//set key file path, image file path and list file path 
+	ALL_PICTURES(const std::string& key, const std::string& image, const std::string &list);
 
-	~ALL_PICTURES(){};
+	//destructor
+	~ALL_PICTURES();
 
-	//load all picture from the list
-	bool LoadAllPictures();
+	// load all picture keys from the list, clear if exist
+	// for query image, also load image size
+	bool LoadPicturesKeyFile();
+
 	//load the camera pose ground truth
 	bool LoadCamerasPose(const std::string& s);
+
 
 	//clear all picture
 	void ClearPicsCameras(){
@@ -169,7 +186,11 @@ public:
 	void ClearCameras(){mCameras.clear();}
 
 	//set the string contents
-	bool SetParameters(const std::string& model_path, const std::string &list);
+	void SetParameters(const std::string& model_path, const std::string &list);
+
+	//if it is for query image, make flag true
+	void SetQueryFlag(const bool flag);
+	const bool RetQueryFlag() const;
 
 	//return all pictures
 	std::vector<PICTURE>& GetAllPictures(){
@@ -188,9 +209,10 @@ public:
 	}
 
 private:
-
-	std::string						mDBpath;//the model database path
-	std::string						mPictureListFile;//a txt file store the picture name
+	bool							mIsqueryimage;//indicate if is query image
+	std::string						mKeyfilepath;//the image key file path
+	std::string						mImagepath;//the images path
+	std::string						mPicturelistfile;//a txt file store the picture name
 	std::vector< PICTURE >			mPictures;//vector store all pictures database or query
 	std::vector< BUNDLER_CAMERA >	mCameras;
 };

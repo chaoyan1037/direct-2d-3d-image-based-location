@@ -5,7 +5,8 @@
 #include <memory>
 #include <omp.h>
 
-#include "Timer/timer.h"
+#include "timer/timer.h"
+#include "exif_reader/exif_reader.h"
 
 int SIFT_Descriptor::legth = 128;
 
@@ -23,6 +24,28 @@ int CalculateSIFTDistanceSquared(const unsigned char* d1, const unsigned char* d
 }
 
 /****** for class PICTURE ****/
+//default constructor
+PICTURE::PICTURE(): mDes_length(0), mKeypoint_num(0), mImageHeight(0), mImgaeWidth(0){
+	
+}
+
+PICTURE::~PICTURE(){ 
+	ClearData(); 
+};
+
+//set and get image size
+void PICTURE::SetImageSize(const size_t height, const size_t width)
+{
+	mImgaeWidth = width;
+	mImageHeight = height;
+}
+
+//get size
+void PICTURE::GetImageSize(size_t& height, size_t& width) const
+{
+	height = mImageHeight;
+	width = mImgaeWidth;
+}
 
 //clear all the data, delete the pointer content
 void PICTURE::ClearData()
@@ -32,7 +55,7 @@ void PICTURE::ClearData()
 }
 
 //load  key points and descriptors  
-bool PICTURE::LoadKeyPointAndDes(std::string des_filename)
+bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bCenter_image)
 {
 	ifstream infile(des_filename, ios::in);
 	if (!infile.is_open()){
@@ -54,6 +77,14 @@ bool PICTURE::LoadKeyPointAndDes(std::string des_filename)
 		// y x  scale  orientation
 		infile >> sift_keypt.y >> sift_keypt.x 
 			>> sift_keypt.scale >> sift_keypt.orientation;
+
+		if (bCenter_image){
+			assert(mImageHeight>0 && mImgaeWidth>0);
+			// center the keypoints around the center of the image
+			// first we need to get the dimensions of the image
+			sift_keypt.x -= (mImgaeWidth - 1.0) / 2.0f;
+			sift_keypt.y = (mImageHeight - 1.0) / 2.0f - sift_keypt.y;
+		}
 
 		//directly operate on the desc
 		//do not use temp variable and then push_back it into the vector
@@ -83,15 +114,37 @@ bool PICTURE::LoadKeyPointAndDes(std::string des_filename)
 
 
 /****** for Class ALL_PICTURES ***/
-//load all picture from the list
-bool ALL_PICTURES::LoadAllPictures()
+//set all empty
+ALL_PICTURES::ALL_PICTURES() :mKeyfilepath(""), mImagepath(""), mPicturelistfile(""){
+
+}
+
+//set key and image have the same path
+ALL_PICTURES::ALL_PICTURES(const std::string& key, const std::string &list)
+: mKeyfilepath(key), mImagepath(key), mPicturelistfile(list){
+
+}
+
+//set separated path 
+ALL_PICTURES::ALL_PICTURES(const std::string& key, const std::string& image, const std::string &list)
+: mKeyfilepath(key), mImagepath(image), mPicturelistfile(list){
+
+}
+
+//destructor
+ALL_PICTURES::~ALL_PICTURES(){
+
+}
+
+//if there already exists pictures, clear them then reload
+bool ALL_PICTURES::LoadPicturesKeyFile()
 {
 	//first clear all pictures if already loaded
 	ClearPics();
 
-	ifstream infile(mDBpath +'/'+ mPictureListFile, std::ios::in);
+	ifstream infile(mKeyfilepath + '/' + mPicturelistfile, std::ios::in);
 	if (!infile.is_open()){
-		cout << "Open list file fail: " << mPictureListFile << endl;
+		cout << "Open list file fail: " << mPicturelistfile << endl;
 		return 0;
 	}
 
@@ -105,32 +158,61 @@ bool ALL_PICTURES::LoadAllPictures()
 
 		picture_filename.erase(picture_filename.begin());
 		picture_filename.erase(picture_filename.begin());
-		picture_filename.erase(picture_filename.end() - 3, picture_filename.end());
-		picture_filename += "key";
-
+		
 		pic_keyfilename.push_back(picture_filename);
 	}
+	infile.close();
+
 	//clear the pictures and then load pictures;
 	mPictures.clear();
 	mPictures.resize(pic_keyfilename.size());
 	
-
+	//for query images, load the image size;
+	if (mIsqueryimage){
+		// first we need to get the dimensions of the image
+		// then center the keypoints around the center of the image
+		std::string img_filename;
+		for (size_t i = 0; i < mPictures.size(); i++)
+		{
+			img_filename = mKeyfilepath + '/' + pic_keyfilename[i];
+			exif_reader::open_exif(img_filename.c_str());
+			//int img_width, img_height;
+			//img_width = exif_reader::get_image_width();
+			//img_height = exif_reader::get_image_height();
+			//std::cout << "image size: " << img_width << " , " << img_height << std::endl;
+			mPictures[i].SetImageSize(exif_reader::get_image_height(),
+				exif_reader::get_image_width());
+			exif_reader::close_exif();
+		}
+	}
+	
 #pragma omp parallel for
 	for (int i = 0; i < pic_keyfilename.size(); i++)
 	{
+		pic_keyfilename[i].replace(pic_keyfilename[i].end() - 3, pic_keyfilename[i].end(), "key");
 		//load a picture
-		mPictures[i].LoadKeyPointAndDes(mDBpath + "/" + pic_keyfilename[i]);
+		mPictures[i].LoadKeyPointAndDes(mKeyfilepath + "/" + pic_keyfilename[i], mIsqueryimage);
 	}
 
 	return 1;
 }
 
-//set the string contents
-bool ALL_PICTURES::SetParameters(const std::string& model_path, const std::string &list)
+//if it is for query image, make flag true
+void ALL_PICTURES::SetQueryFlag(const bool flag)
 {
-	mDBpath = model_path;
-	mPictureListFile = list;
-	return 1;
+	mIsqueryimage = flag;
+}
+
+const bool ALL_PICTURES::RetQueryFlag() const
+{
+	return mIsqueryimage;
+}
+
+//set the string contents
+void ALL_PICTURES::SetParameters(const std::string& model_path, const std::string &list)
+{
+	mKeyfilepath = model_path;
+	mPicturelistfile = list;
 }
 
 //load the camera pose ground truth from bundler.query.out
