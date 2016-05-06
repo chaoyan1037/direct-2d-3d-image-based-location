@@ -11,6 +11,7 @@
 
 #include "PreProcess/parsebundler.h"
 
+const double PI = 3.14159268979;
 
 class VISUALWORDS_HANDLER
 {
@@ -51,11 +52,32 @@ private:
 
 	/***************contained data******************/
 
-	//opencv flannIndex
+	//openCV flannIndex
 	cv::flann::Index mVW_index;
 
 	//database visual words(100k * 128float , sift) 
 	cv::Mat	mDB_visualwords;
+};
+
+struct  LOCATE_RESULT
+{
+	LOCATE_RESULT():located_image(0),
+	num_putative_match(0),num_inlier_match(0), 
+	time_findcorresp(0.0), time_computepose(0.0),
+	error_rotation(0.0), error_translation(0.0){}
+
+	bool	located_image;
+
+	size_t	num_putative_match;
+	size_t	num_inlier_match;
+
+	double	time_findcorresp;//ms
+	double	time_computepose;
+
+	double	error_rotation;
+	double	error_translation;
+
+	BUNDLER_CAMERA cam_pose_est;
 };
 
 class VISUALWORDS_3DPOINT_HANDLER
@@ -67,8 +89,7 @@ private:
 	bool FindCorrespondence(const PICTURE& picture);
 
 	//Do query for a single picture
-	bool LocateSinglePicture(const PICTURE& picture, 
-		BUNDLER_CAMERA& camera);
+	bool LocateSinglePicture(const PICTURE& picture, LOCATE_RESULT& result);
 
 	//build the visual words's index of 3d point 
 	bool BuildIndex3DPoints();
@@ -81,6 +102,8 @@ private:
 	bool SaveIndex3DPoints(const std::string& s) const;
 	bool LoadIndex3DPoints(const std::string& s);
 
+	//save the localization result
+	void SaveLocalizationResult(const std::string& s) const;
 
 	//ratio test threshold to accept a 3d point as match
 	//i.e. find two two possible 3d points by compare with 
@@ -115,19 +138,13 @@ public:
 		const std::string &list_txt,
 		const std::string &bundle_file);
 
-	~VISUALWORDS_3DPOINT_HANDLER(){};
+	~VISUALWORDS_3DPOINT_HANDLER();
 
 	//inti, load database image, 3d points, and visual words
 	bool Init();
 
 	//locate all query images, call private LocateSinglePicture()
-	void LocatePictures(const std::vector< PICTURE >& pic_query,
-		std::vector< BUNDLER_CAMERA >& cam_pose_estimate,
-		std::vector< bool >& camera_pose_mask);
-
-	//PARSE_BUNDLER contain database image, used to init the 3d point
-	PARSE_BUNDLER			mParse_bundler;
-	VISUALWORDS_HANDLER		mVW_handler;
+	void LocatePictures(const ALL_PICTURES& pic_query);
 
 	//std::set< std::pair<int, int>, ViewListIsShort> mViewListSet;
 	//self define compare function, compare which view list is shorter
@@ -142,6 +159,15 @@ public:
 	//3d point each visual words contain
 	//pair int:the id of 3d point, int: the length of the view list of this 3d point
 	std::vector<std::set<std::pair<int, int>, compareFunc>> mVisualwords_index_3d;
+
+	//PARSE_BUNDLER contain database image, used to init the 3d point
+	PARSE_BUNDLER			mParse_bundler;
+	VISUALWORDS_HANDLER		mVW_handler;
+
+	//localization result
+	size_t							mNum_totalimage;
+	size_t							mNum_locatedimage;
+	std::vector<LOCATE_RESULT>		mLocate_result;
 };
 
 #endif

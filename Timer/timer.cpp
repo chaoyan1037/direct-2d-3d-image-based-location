@@ -34,7 +34,7 @@ void Timer::ReStart(){
 void Timer::Stop(){
 	mTime_end = GetTickCount();
 	//since when restart we also add the original time
-	mElapsed_time += (mTime_end - mTime_start)/1e3;
+	mElapsed_time += (mTime_end - mTime_start);
 
 	if (mTime_end < mTime_start){
 		std::cerr << " error: mTime_end is smaller than mTime_start. timer.cpp line 39" << std::endl;
@@ -42,7 +42,10 @@ void Timer::Stop(){
 }
 
 //get the elapsed time in seconds 
-double Timer::GetElapsedTime(){
+double Timer::GetElapsedTimeSecond(){
+	return (mElapsed_time / 1e3);
+}
+double Timer::GetElapsedTimeMilliSecond(){
 	return mElapsed_time;
 }
 
@@ -50,10 +53,11 @@ double Timer::GetElapsedTime(){
 std::string Timer::GetElapsedTimeAsString(){
 	// parse elapsed time into string stream
 	std::ostringstream s;
-
+	
+	double elapsed_time_min = (mElapsed_time / 1e3);
 	// get the elapsed minutes and seconds
-	double elapsed_minutes = (mElapsed_time < 60) ? 0.0 : floor(mElapsed_time / 60);
-	double elapsed_seconds = mElapsed_time - floor(mElapsed_time / 60) * 60;
+	double elapsed_minutes = (elapsed_time_min < 60) ? 0.0 : floor(elapsed_time_min / 60);
+	double elapsed_seconds = elapsed_time_min - floor(elapsed_time_min / 60) * 60;
 	s << elapsed_minutes << " minutes " << elapsed_seconds << " seconds ";
 	return s.str();
 }

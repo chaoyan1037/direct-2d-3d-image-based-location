@@ -32,6 +32,66 @@ using std::endl;
 
 //#define TSET_GEOMETRY
 
+//unit quaternion are assumed
+//q = w + xi + yj + zk
+void QuaternionToRotation(const double* quaterion, cv::Matx33d& R)
+{
+	double w = quaterion[0];
+	double x = quaterion[1];
+	double y = quaterion[2];
+	double z = quaterion[3];
+
+	double wx = 2 * w*x, wy = 2 * w*y, wz = 2 * w*z;
+	double xx = 2 * x*x, xy = 2 * x*y, xz = 2 * x*z;
+	double yy = 2 * y*y, yz = 2 * y*z, zz = 2 * z*z;
+
+	R(0, 0) = 1.0 - yy - zz;	R(0, 1) = xy - wz;			R(0, 2) = xz + wy;
+	R(1, 0) = xy + wz;			R(1, 1) = 1.0 - xx - zz;	R(1, 2) = yz - wx;
+	R(2, 0) = xz - wy;			R(2, 1) = yz + wx;			R(2, 2) = 1.0 - xx - yy;
+}
+
+//unit quaternion are assumed
+//q = w + xi + yj + zk 
+void RotationToQuaterion(const cv::Matx33d& R, double* quaternion)
+{
+	double& w = quaternion[0];
+	double& x = quaternion[1];
+	double& y = quaternion[2];
+	double& z = quaternion[3];
+	// This algorithm comes from  "Quaternion Calculus and Fast Animation",
+	// Ken Shoemake, 1987 SIGGRAPH course notes
+	double t = R(0, 0) + R(1, 1) + R(2, 2);
+	if (t > 0){
+		t = std::sqrt(t + 1.0);
+		w = 0.5*t;
+		t = 0.5 / t;
+		x = (R(2, 1) - R(1, 2))*t;
+		y = (R(0, 2) - R(2, 0))*t;
+		z = (R(1, 0) - R(0, 1))*t;
+	}
+	else{
+		int i = 0;
+		if (R(1, 1) > R(0, 0))
+			i = 1;
+		if (R(2, 2) > R(i, i))
+			i = 2;
+		int j = (i + 1) % 3;
+		int k = (j + 1) % 3;
+
+		t = std::sqrt(1.0 + R(i, i) - R(j, j) - R(k, k));
+		quaternion[i + 1] = 0.5*t;
+		t = 0.5 / t;
+		w = (R(k, j) - R(j, k))*t;
+		quaternion[j + 1] = (R(j, i) + R(i, j))*t;
+		quaternion[k + 1] = (R(k, i) + R(i, k))*t;
+		//in case that w is nagtive
+		if (w < 0){
+			w = -w; x = -x; y = -y; z = -z;
+		}
+	}
+}
+
+
 void Geometry::SetIntrinsicParameter(float f, int u, int v){
 	K(0, 0) = f;	K(0, 1) = 0.0;	K(0, 2) = u;
 	K(1, 0) = 0.0;	K(1, 1) = f;	K(1, 2) = v;
@@ -768,65 +828,6 @@ bool Geometry::RefinePoseTooN()
 	return 1;
 }
 
-
-//unit quaternion are assumed
-//q = w + xi + yj + zk
-inline void Geometry::QuaternionToRotation(const double* quaterion, cv::Matx33d& R)const
-{
-	double w = quaterion[0];
-	double x = quaterion[1];
-	double y = quaterion[2];
-	double z = quaterion[3];
-
-	double wx = 2 * w*x, wy = 2 * w*y, wz = 2 * w*z;
-	double xx = 2 * x*x, xy = 2 * x*y, xz = 2 * x*z;
-	double yy = 2 * y*y, yz = 2 * y*z, zz = 2 * z*z;
-
-	R(0, 0) = 1.0 - yy - zz;	R(0, 1) = xy - wz;			R(0, 2) = xz + wy;
-	R(1, 0) = xy + wz;			R(1, 1) = 1.0 - xx - zz;	R(1, 2) = yz - wx;
-	R(2, 0) = xz - wy;			R(2, 1) = yz + wx;			R(2, 2) = 1.0 - xx - yy;
-}
-
-//unit quaternion are assumed
-//q = w + xi + yj + zk 
-inline void Geometry::RotationToQuaterion(const cv::Matx33d& R, double* quaternion)const
-{
-	double& w = quaternion[0];
-	double& x = quaternion[1];
-	double& y = quaternion[2];
-	double& z = quaternion[3];
-	// This algorithm comes from  "Quaternion Calculus and Fast Animation",
-	// Ken Shoemake, 1987 SIGGRAPH course notes
-	double t = R(0, 0) + R(1, 1) + R(2, 2);
-	if (t > 0){
-		t = std::sqrt(t + 1.0);
-		w = 0.5*t;
-		t = 0.5 / t;
-		x = (R(2, 1) - R(1, 2))*t;
-		y = (R(0, 2) - R(2, 0))*t;
-		z = (R(1, 0) - R(0, 1))*t;
-	}
-	else{
-		int i = 0;
-		if (R(1, 1) > R(0, 0)) 
-			i = 1;
-		if (R(2, 2) > R(i, i)) 
-			i = 2;
-		int j = (i + 1) % 3;
-		int k = (j + 1) % 3;
-		
-		t = std::sqrt(1.0 + R(i, i) - R(j, j) - R(k, k));
-		quaternion[i+1] = 0.5*t;
-		t = 0.5 / t;
-		w = (R(k, j) - R(j, k))*t;
-		quaternion[j+1] = (R(j, i) + R(i, j))*t;
-		quaternion[k+1] = (R(k, i) + R(i, k))*t;
-		//in case that w is nagtive
-		if (w < 0){
-			w = -w; x = -x; y = -y; z = -z;
-		}
-	}
-}
 
 //////////////////////////////////////////////////////////////////////////
 //for test

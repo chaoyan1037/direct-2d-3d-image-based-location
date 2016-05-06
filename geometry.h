@@ -6,6 +6,11 @@
 
 #include <opencv/cv.h>
 
+/** Convert the quaternion to a 3x3 rotation matrix.
+The quaternion is required to
+* be normalized, otherwise the result is undefined.**/
+void QuaternionToRotation(const double* quaterion, cv::Matx33d& R);
+void RotationToQuaterion(const cv::Matx33d& R, double* quaterion);
 
 class Geometry
 {
@@ -101,14 +106,6 @@ public:
 	void TestGeometry();
 
 private:
-	/** Convert the quaternion to a 3x3 rotation matrix. 
-	  The quaternion is required to
-	* be normalized, otherwise the result is undefined.**/
-	inline void QuaternionToRotation(const double* quaterion,
-		cv::Matx33d& R) const;
-
-	inline void RotationToQuaterion(const cv::Matx33d& R, 
-		double* quaterion) const;
 
 	//the real K for epnp
 	cv::Matx33d K;
@@ -138,8 +135,6 @@ private:
 	//indicate whether match in match_2d_3d vector is inlier
 	std::vector<bool> binlier;
 };
-
-
 
 
 #endif

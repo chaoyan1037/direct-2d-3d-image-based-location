@@ -1,4 +1,4 @@
-# direct-2d-3d-image-base-location
+# direct-2d-3d-image-based-location
 use the direct 2d-3d match method to do image-base location.
 
 original paper: 

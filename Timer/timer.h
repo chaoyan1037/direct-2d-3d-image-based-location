@@ -33,10 +33,11 @@ public:
 	//stop the timer 
 	void Stop();
 
-	//get the elapsed time in seconds 
-	double GetElapsedTime();
+	//get the elapsed time in seconds or milliseconds
+	double GetElapsedTimeSecond();
+	double GetElapsedTimeMilliSecond();
 
-	//get the elapsed time in seconds in a string
+	//get the elapsed time in seconds as a string
 	std::string GetElapsedTimeAsString();
 
 private:
@@ -44,7 +45,7 @@ private:
 	double	mTime_start;
 	double	mTime_end;
 
-	double  mElapsed_time;//in seconds;
+	double  mElapsed_time;//in milli seconds;
 };
 
 

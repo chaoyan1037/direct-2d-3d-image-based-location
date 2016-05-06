@@ -139,6 +139,9 @@ ALL_PICTURES::~ALL_PICTURES(){
 //if there already exists pictures, clear them then reload
 bool ALL_PICTURES::LoadPicturesKeyFile()
 {
+	Timer timer;
+	timer.Start();
+
 	//first clear all pictures if already loaded
 	ClearPics();
 
@@ -194,6 +197,8 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 		mPictures[i].LoadKeyPointAndDes(mKeyfilepath + "/" + pic_keyfilename[i], mIsqueryimage);
 	}
 
+	timer.Stop();
+	cout << "load picture keys time: " << timer.GetElapsedTimeAsString() << endl;
 	return 1;
 }
 
@@ -216,7 +221,11 @@ void ALL_PICTURES::SetParameters(const std::string& model_path, const std::strin
 }
 
 //load the camera pose ground truth from bundler.query.out
-bool ALL_PICTURES::LoadCamerasPose(const std::string& s){
+bool ALL_PICTURES::LoadCamerasPose(const std::string& s)
+{
+	Timer timer;
+	timer.Start();
+
 	std::ifstream instream(s, std::ios::in);
 	if (!instream.is_open()){
 		std::cout << "open bundler fail: " << s << std::endl;
@@ -249,5 +258,8 @@ bool ALL_PICTURES::LoadCamerasPose(const std::string& s){
 	}
 
 	instream.close();
+
+	timer.Stop();
+	cout << "load camera true pose time: " << timer.GetElapsedTimeAsString() << endl;
 	return 1;
 }

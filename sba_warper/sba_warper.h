@@ -83,15 +83,9 @@ struct globs_
 
 struct sba_warper_data
 {
-	sba_warper_data(): fix_K(0), K(0), 
-		para_camera(0), ncamera(1), cnp(6), vmask(0),
-		para_3dpoints(0), n3dpoints(0), pnp(3),
-		para_2dpoints(0), n2dpoints(0), mnp(2)
-	{}
+	sba_warper_data();
 
-	~sba_warper_data(){
-		clear();
-	}
+	~sba_warper_data();
 	
 	//copy constructor
 	sba_warper_data(const sba_warper_data&s);
@@ -102,17 +96,7 @@ struct sba_warper_data
 	// swap function
 	void swap(sba_warper_data&s);
 
-	void clear(){
-		if (K)				delete[] K;
-		if (para_camera)	delete[] para_camera;
-		if (vmask)			delete[] vmask;
-		if (para_2dpoints)	delete[] para_2dpoints;
-		if (para_3dpoints)	delete[] para_3dpoints;
-		fix_K = 0;
-		ncamera = 0; cnp = 0; 
-		n3dpoints = 0; pnp = 0;
-		n2dpoints = 0; mnp = 0;
-	}
+	void clear();
 
 	// print the sba data to debug
 	void print(std::ostream& os = std::cout);

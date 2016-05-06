@@ -789,6 +789,40 @@ void globs_::print(std::ostream& os)
 
 
 /******************* struct sba_warper_data ***********************/
+sba_warper_data::sba_warper_data() : fix_K(0), K(0),
+para_camera(0), ncamera(1), cnp(6), vmask(0),
+para_3dpoints(0), n3dpoints(0), pnp(3),
+para_2dpoints(0), n2dpoints(0), mnp(2)
+{
+
+}
+
+//destructor
+sba_warper_data::~sba_warper_data(){
+	clear();
+}
+
+void sba_warper_data::clear()
+{
+	if (K)				delete[] K;
+	if (para_camera)	delete[] para_camera;
+	if (vmask)			delete[] vmask;
+	if (para_2dpoints)	delete[] para_2dpoints;
+	if (para_3dpoints)	delete[] para_3dpoints;
+
+	K = 0;
+	para_camera = 0;
+	vmask = 0;
+	para_2dpoints = 0;
+	para_3dpoints = 0;
+
+	fix_K = 0;
+	ncamera = 0; cnp = 0;
+	n3dpoints = 0; pnp = 0;
+	n2dpoints = 0; mnp = 0;
+}
+
+
 //copy constructor
 sba_warper_data::sba_warper_data(const sba_warper_data&s){
 	ncamera = s.ncamera;

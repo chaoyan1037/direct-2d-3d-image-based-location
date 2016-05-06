@@ -47,11 +47,7 @@ int main(int * argc, char** argv)
 	//load the query images pose ground truth
 	pic_query.LoadCamerasPose("D:/bundlerSIFT/examples/statue/bundle/bundle.query.out");
 
-	//define the estimated camera pose
-	std::vector< BUNDLER_CAMERA >	camera_pose_estimated(pic_query.GetAllPictures().size());
-	std::vector< bool >				camera_pose_mask(pic_query.GetAllPictures().size(), false);
-
-	vw_3d_point_handler.LocatePictures(pic_query.GetAllPictures(), camera_pose_estimated, camera_pose_mask);
+	vw_3d_point_handler.LocatePictures(pic_query);
 
 	return 1;
 }

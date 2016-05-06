@@ -1,14 +1,14 @@
 #include <fstream>
 #include <algorithm>
 #include <vector>
+#include <cmath>
 
 #include <opencv/cv.h>
 
 #include "visualwords.h"
-#include "PreProcess/picture.h"
-#include "Timer/timer.h"
+#include "preprocess/picture.h"
+#include "timer/timer.h"
 #include "geometry.h"
-
 
 using namespace std;
 
@@ -189,7 +189,11 @@ VISUALWORDS_3DPOINT_HANDLER::VISUALWORDS_3DPOINT_HANDLER(const std::string &bund
 	mMaxNumberCorrespondence = 100;
 	mMinNumberCorrespondence = 12;
 }
+//destructor
+VISUALWORDS_3DPOINT_HANDLER::~VISUALWORDS_3DPOINT_HANDLER()
+{
 
+}
 //initiation work, load the picture and 3d points and build the index
 bool VISUALWORDS_3DPOINT_HANDLER::Init()
 {
@@ -322,7 +326,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 		//mFeature_3d_point_correspondence_ratio_test_thres
 		//Check whether closest distance is less than 0.7 of second.
 		if (min_distance_3d_point_index[1] > 0 && 
-			10 * 10 * min_distance_squared[0] < 7 * 7 * min_distance_squared[1])
+			10 * 10 * min_distance_squared[0] < 8 * 8 * min_distance_squared[1])
 		{
 			mFeature_3d_point_correspondence_mask[i] = true;
 			mFeature_3d_point_correspondence.push_back(make_pair(i, min_distance_3d_point_index[0]));
@@ -343,43 +347,122 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 }
 
 //the public function to locate a single picture
-bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture,
-	BUNDLER_CAMERA& camera)
+bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture, LOCATE_RESULT& result)
 {
+	Timer timer;
+	timer.Start();
 	//0: can not find enough 2d-3d correspondence
+
 	if (0 == FindCorrespondence(picture)){
 		std::cout << "not enough putative matches" << std::endl;
+		timer.Stop();
+		result.time_findcorresp = timer.GetElapsedTimeMilliSecond();
 		return 0;
 	}
-
+	timer.Stop();
+	result.time_findcorresp = timer.GetElapsedTimeMilliSecond();
+	
+	timer.ReStart();
 	Geometry geo;
 	//geo.match_2d_3d
 	auto& mat_2d_3d = geo.ReturnMatch_2d_3d();
-	for (auto pa : mFeature_3d_point_correspondence){
+	for (auto pa : mFeature_3d_point_correspondence)
+	{
 		auto& pt_2d = picture.GetFeaturePoint()[pa.first];
 		auto& pt_3d = mParse_bundler.GetFeature3DInfo()[pa.second].mPoint;
 		mat_2d_3d.push_back(std::make_pair(
 			cv::Vec2d(pt_2d.x, pt_2d.y),
 			cv::Vec3d(pt_3d.x, pt_3d.y, pt_3d.z)));
 	}
-
+	result.num_putative_match = mat_2d_3d.size();
 	//if there are no intrinsics then use DLT
-	if ( geo.ComputePoseDLT() == 0 ) return 0;
+	result.num_inlier_match = geo.ComputePoseDLT();
+
+	timer.Stop();
+	result.time_computepose = timer.GetElapsedTimeMilliSecond() - result.time_findcorresp;
+
+	if ( 0 == result.num_inlier_match ){return 0;}
 	
-	geo.GetRT(camera.rotation, camera.translation);
-
-
+	geo.GetRT(result.cam_pose_est.rotation, result.cam_pose_est.translation);
+	result.located_image = true;
+	cout << " locate single image time: " << timer.GetElapsedTimeMilliSecond() << endl;
+	
 	return 1;
 }
 
-void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const std::vector< PICTURE >& pic_query,
-	std::vector< BUNDLER_CAMERA >& cam_pose_estimate,
-	std::vector< bool >& camera_pose_mask)
+void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_query)
 {
-	
-	for (size_t i = 0; i < pic_query.size(); i++){
-		camera_pose_mask[i] = LocateSinglePicture(pic_query[i], cam_pose_estimate[i]);
+	Timer timer;
+	timer.Start();
+
+	auto & pic_query = pic_cam_query.GetAllPictures();
+	auto & cam_query_true = pic_cam_query.GetAllCameras();
+
+	mNum_totalimage = pic_query.size();
+	mNum_locatedimage = 0;
+	mLocate_result.resize(mNum_totalimage);
+
+	cv::Matx33d R_diff;
+	double quat[4];
+	double cos_half_phi, sin_half_phi;
+
+	//can use openMP parallel here, since VISUALWORDS_3DPOINT_HANDLER is shared
+	for (int i = 0; i < pic_query.size(); i++)
+	{
+		cout << "start locating image " << i << endl;
+		LocateSinglePicture(pic_query[i], mLocate_result[i]);
+		if (0 == mLocate_result[i].located_image) continue;
+
+		mNum_locatedimage++;
+
+		//calculate the rotation err
+		R_diff = (cam_query_true[i].rotation * mLocate_result[i].cam_pose_est.rotation.t());
+		RotationToQuaterion(R_diff, quat);
+
+		cos_half_phi = quat[0];
+		sin_half_phi = std::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
+
+		//atan2(sin_half_phi, cos_half_phi) is phi/2, so it is 2 * 180 /PI
+		mLocate_result[i].error_rotation = atan2(sin_half_phi, cos_half_phi) * 360.0 / PI;
+
+		cv::Vec3d err_trans = cam_query_true[i].translation - mLocate_result[i].cam_pose_est.translation;
+		mLocate_result[i].error_translation = std::sqrt(err_trans[0] * err_trans[0] 
+			+ err_trans[1] * err_trans[1] + err_trans[2] * err_trans[2]);
+		cout << "end locating image " << i << endl;
 	}
+
+	cout << "start write result " << endl;
+	//save the result into a txt file
+	SaveLocalizationResult("result.txt");
+
+	timer.Stop();
+	std::cout << "locate all images time: " << timer.GetElapsedTimeAsString() << std::endl;
 }
 
+//save the localization result
+//format: total num of images  located num of images
+//each line is the result information of a image
+//
+void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s) const
+{
+	std::ofstream os(s, std::ios::trunc);
+	if (false == os.is_open()){
+		std::cout << "open result file fail: " << s << std::endl;
+		return;
+	}
 
+	os << mNum_totalimage << " " << mNum_locatedimage << endl;
+	for (auto& res : mLocate_result)
+	{
+		os	<< res.located_image << " "
+			<< res.num_putative_match << " "
+			<< res.num_inlier_match << " "
+			<< res.time_findcorresp << " "
+			<< res.time_computepose << " "
+			<< res.error_rotation << " "
+			<< res.error_translation << " "
+			<< std::endl;
+	}
+
+	os.close();
+}
