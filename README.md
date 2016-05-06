@@ -1,5 +1,5 @@
 # direct-2d-3d-image-based-location
-use the direct 2d-3d match method to do image-base location.
+use the direct 2d-3d match method to do image-based location.
 
 original paper: 
 Sattler, Torsten, Bastian Leibe, and Leif Kobbelt. 
