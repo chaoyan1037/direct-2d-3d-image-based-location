@@ -112,9 +112,9 @@ public:
 	bool LoadKeyPointAndDes(const std::string& des_filename, bool bCenter_image);
 	
 	//set size
-	void SetImageSize(const size_t height, const size_t width);
+	void SetImageSize(const int height, const int width);
 	//get size
-	void GetImageSize(size_t& height, size_t& width) const;
+	void GetImageSize(int& height, int& width) const;
 
 	//the num of feature points of the picture
 	size_t PointsNum() const
@@ -140,10 +140,10 @@ public:
 	}
 
 private:
-	size_t							mImageHeight;
-	size_t							mImgaeWidth;
-	size_t							mKeypoint_num;//total num of descriptors
-	size_t							mDes_length;//128 for sift
+	int		mImageHeight;
+	int		mImgaeWidth;
+	int		mKeypoint_num;//total num of descriptors
+	int		mDes_length;//128 for sift
 	//origin is the left-up corner
 	//for query image, make the center as origin with known image size
 	//for data base image, just leave it without using x, y
@@ -208,13 +208,24 @@ public:
 		return mCameras;
 	}
 
+	//for query images, return all focal
+	std::vector<double> GetAllQueryFocal(){
+		return mQueryfocal;
+	}
+	const std::vector<double> GetAllQueryFocal() const{
+		return mQueryfocal;
+	}
+
 private:
-	bool							mIsqueryimage;//indicate if is query image
+	
 	std::string						mKeyfilepath;//the image key file path
 	std::string						mImagepath;//the images path
 	std::string						mPicturelistfile;//a txt file store the picture name
 	std::vector< PICTURE >			mPictures;//vector store all pictures database or query
 	std::vector< BUNDLER_CAMERA >	mCameras;
+
+	bool							mIsqueryimage;//indicate if is query image
+	std::vector<double>				mQueryfocal;//the focal length of query image
 };
 
 

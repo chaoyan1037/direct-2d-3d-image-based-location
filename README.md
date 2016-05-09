@@ -37,6 +37,9 @@ I use the 5-point epnp algorithm to calculate camera pose when intrinsics are av
 The original epnp implementation do not have copy constructor or copy assignment function,
 this will cause error when use OpenMP, so I implement copy constructor and copy assignment.
 So I upload my modified epnp algorithm source files. 
+In case you are confused, I will explicitly point out that the epnp assume the right-hand
+coordinate, and the z-axis is the camera view direction(thus z of camera points is positive)
+and the x points left, and y points up.
 
 
 TODO:

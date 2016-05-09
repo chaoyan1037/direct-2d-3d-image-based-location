@@ -29,19 +29,19 @@ PICTURE::PICTURE(): mDes_length(0), mKeypoint_num(0), mImageHeight(0), mImgaeWid
 	
 }
 
-PICTURE::~PICTURE(){ 
-	ClearData(); 
+PICTURE::~PICTURE(){
+
 };
 
 //set and get image size
-void PICTURE::SetImageSize(const size_t height, const size_t width)
+void PICTURE::SetImageSize(const int height, const int width)
 {
 	mImgaeWidth = width;
 	mImageHeight = height;
 }
 
 //get size
-void PICTURE::GetImageSize(size_t& height, size_t& width) const
+void PICTURE::GetImageSize(int& height, int& width) const
 {
 	height = mImageHeight;
 	width = mImgaeWidth;
@@ -78,14 +78,19 @@ bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bCenter_i
 		infile >> sift_keypt.y >> sift_keypt.x 
 			>> sift_keypt.scale >> sift_keypt.orientation;
 
-		if (bCenter_image){
-			assert(mImageHeight>0 && mImgaeWidth>0);
-			// center the keypoints around the center of the image
-			// first we need to get the dimensions of the image
-			sift_keypt.x -= (mImgaeWidth - 1.0) / 2.0f;
-			sift_keypt.y = (mImageHeight - 1.0) / 2.0f - sift_keypt.y;
-		}
-
+		
+		assert(mImageHeight>0 && mImgaeWidth>0);
+		//origin: right_bottom, x-axis points left, y-axis points up
+		sift_keypt.x = mImgaeWidth - 1.0 - sift_keypt.x;
+		sift_keypt.y = mImageHeight - 1.0 - sift_keypt.y;
+		// center the keypoints around the center of the image
+		// first we need to get the dimensions of the image
+		//sift_keypt.x -= (mImgaeWidth - 1.0) / 2.0f;
+		//sift_keypt.y = (mImageHeight - 1.0) / 2.0f - sift_keypt.y;
+			
+		//origin: left_bottom, x-axis points right, y-axis points up
+		//sift_keypt.y = mImageHeight - 1.0 - sift_keypt.y;
+				
 		//directly operate on the desc
 		//do not use temp variable and then push_back it into the vector
 		//since program end the temp variable will release the newed memory 
@@ -115,19 +120,20 @@ bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bCenter_i
 
 /****** for Class ALL_PICTURES ***/
 //set all empty
-ALL_PICTURES::ALL_PICTURES() :mKeyfilepath(""), mImagepath(""), mPicturelistfile(""){
-
+ALL_PICTURES::ALL_PICTURES() :mKeyfilepath(""), 
+mImagepath(""), mPicturelistfile(""), mIsqueryimage(false){
+	
 }
 
 //set key and image have the same path
 ALL_PICTURES::ALL_PICTURES(const std::string& key, const std::string &list)
-: mKeyfilepath(key), mImagepath(key), mPicturelistfile(list){
+: mKeyfilepath(key), mImagepath(key), mPicturelistfile(list), mIsqueryimage(false){
 
 }
 
 //set separated path 
 ALL_PICTURES::ALL_PICTURES(const std::string& key, const std::string& image, const std::string &list)
-: mKeyfilepath(key), mImagepath(image), mPicturelistfile(list){
+: mKeyfilepath(key), mImagepath(image), mPicturelistfile(list), mIsqueryimage(false){
 
 }
 
@@ -152,17 +158,27 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 	}
 
 	vector<string> pic_keyfilename;
-	string  line_in_file; 
+	string  line_in_file;
+	string	picture_filename;
+	int		temp_zero = 0;
+	double	temp_f = 0.0;
 	while ( getline(infile, line_in_file) )
 	{
 		istringstream words_in_line(line_in_file);
-		string picture_filename;
 		words_in_line >> picture_filename;
-
-		picture_filename.erase(picture_filename.begin());
-		picture_filename.erase(picture_filename.begin());
-		
+	
+		picture_filename.erase(0, 2);
 		pic_keyfilename.push_back(picture_filename);
+		
+		if (false == mIsqueryimage) continue;
+		
+		//check if have f 
+		if ((words_in_line >> temp_zero) && temp_zero == 0){
+			words_in_line >> temp_f;
+			mQueryfocal.push_back(temp_f);
+		}
+		else mQueryfocal.push_back(-1.0);
+
 	}
 	infile.close();
 
@@ -170,7 +186,7 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 	mPictures.clear();
 	mPictures.resize(pic_keyfilename.size());
 	
-	//for query images, load the image size;
+	//for query images, also load the image size;
 	if (mIsqueryimage){
 		// first we need to get the dimensions of the image
 		// then center the keypoints around the center of the image
@@ -183,8 +199,7 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 			//img_width = exif_reader::get_image_width();
 			//img_height = exif_reader::get_image_height();
 			//std::cout << "image size: " << img_width << " , " << img_height << std::endl;
-			mPictures[i].SetImageSize(exif_reader::get_image_height(),
-				exif_reader::get_image_width());
+			mPictures[i].SetImageSize(exif_reader::get_image_height(), exif_reader::get_image_width());
 			exif_reader::close_exif();
 		}
 	}
@@ -238,6 +253,8 @@ bool ALL_PICTURES::LoadCamerasPose(const std::string& s)
 	instream >> num_cam >> num_points;
 	mCameras.resize(num_cam);
 
+	assert(mCameras.size()==mPictures.size());
+
 	for (size_t i = 0; i < num_cam; i++){
 		instream >> mCameras[i].focal_length
 			>> mCameras[i].k1 >> mCameras[i].k2;
@@ -255,6 +272,8 @@ bool ALL_PICTURES::LoadCamerasPose(const std::string& s)
 		instream >> mCameras[i].translation(0)
 			>> mCameras[i].translation(1)
 			>> mCameras[i].translation(2);
+		
+		mPictures[i].GetImageSize(mCameras[i].height, mCameras[i].width);
 	}
 
 	instream.close();

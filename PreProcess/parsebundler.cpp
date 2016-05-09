@@ -8,12 +8,12 @@
 #include <utility>
 
 //using namespace std;
+using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::istringstream;
 using std::cout;
 using std::endl;
-using std::string;
 
 
 PARSE_BUNDLER::PARSE_BUNDLER()

@@ -107,7 +107,7 @@ epnp::~epnp()
   delete [] pcs;
 }
 
-void epnp::set_internal_parameters(double uc, double vc, double fu, double fv)
+void epnp::set_internal_parameters(const double uc, const double vc, const double fu, const double fv)
 {
   this->uc = uc;
   this->vc = vc;

@@ -30,6 +30,12 @@ int main(int * argc, char** argv)
 	parse_bundler.WriteQueryBundler("E:/Dubrovnik6K/bundle/bundle.query.out");
 	return 1;
 #endif
+	//test geometry
+#if 0
+	Geometry geo;
+	geo.TestGeometry();
+	return 1;
+#endif
 	/*	VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path,
 		const std::string &list_txt,
 		const std::string &bundle_file)

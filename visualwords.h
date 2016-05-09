@@ -9,7 +9,7 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 
-#include "PreProcess/parsebundler.h"
+#include "preprocess/parsebundler.h"
 
 const double PI = 3.14159268979;
 
@@ -18,14 +18,9 @@ class VISUALWORDS_HANDLER
 public:
 	
 	//default constructor
-	VISUALWORDS_HANDLER() :
-		mVisualwords_file("generic_vocabulary_100k/visual_words_sift_100k.cluster"),
-		mNum_visualwords(100000)
-	{
-		;
-	}
+	VISUALWORDS_HANDLER();
 
-	~VISUALWORDS_HANDLER(){};
+	~VISUALWORDS_HANDLER();
 	
 	//get the number of database total visual words
 	const int GetNumVisualWords() const;
@@ -59,13 +54,20 @@ private:
 	cv::Mat	mDB_visualwords;
 };
 
+//struct to store data for a query picture
 struct  LOCATE_RESULT
 {
-	LOCATE_RESULT():located_image(0),
-	num_putative_match(0),num_inlier_match(0), 
-	time_findcorresp(0.0), time_computepose(0.0),
-	error_rotation(0.0), error_translation(0.0){}
+	LOCATE_RESULT() :have_intrinsics(0),located_image(0),
+		num_putative_match(0),num_inlier_match(0), 
+		time_findcorresp(0.0), time_computepose(0.0),
+		error_rotation(0.0), error_translation(0.0)
+	{
+		K = K.zeros();
+		rotation = rotation.zeros();
+		translation[0] = 0.0; translation[1] = 0.0; translation[2] = 0.0;
+	}
 
+	bool	have_intrinsics;
 	bool	located_image;
 
 	size_t	num_putative_match;
@@ -77,7 +79,10 @@ struct  LOCATE_RESULT
 	double	error_rotation;
 	double	error_translation;
 
-	BUNDLER_CAMERA cam_pose_est;
+	// if have intrinsics, then use epnp, else use DLT and estimate K
+	cv::Matx33d	K; 
+	cv::Matx33d	rotation;
+	cv::Vec3d	translation;
 };
 
 class VISUALWORDS_3DPOINT_HANDLER
@@ -103,7 +108,8 @@ private:
 	bool LoadIndex3DPoints(const std::string& s);
 
 	//save the localization result
-	void SaveLocalizationResult(const std::string& s) const;
+	//0  no, 1: RT, 2 RTK
+	void SaveLocalizationResult(const std::string& s, const int iReportRTK = 0) const;
 
 	//ratio test threshold to accept a 3d point as match
 	//i.e. find two two possible 3d points by compare with 
@@ -161,8 +167,8 @@ public:
 	std::vector<std::set<std::pair<int, int>, compareFunc>> mVisualwords_index_3d;
 
 	//PARSE_BUNDLER contain database image, used to init the 3d point
-	PARSE_BUNDLER			mParse_bundler;
-	VISUALWORDS_HANDLER		mVW_handler;
+	PARSE_BUNDLER					mParse_bundler;
+	VISUALWORDS_HANDLER				mVW_handler;
 
 	//localization result
 	size_t							mNum_totalimage;

@@ -3,8 +3,8 @@
 #include <fstream>
 #include <time.h>
 #include <stdlib.h>
-#include <omp.h>
 #include <math.h>
+//#include <omp.h>
 #include <stdlib.h>
 #include <algorithm>
 
@@ -91,8 +91,22 @@ void RotationToQuaterion(const cv::Matx33d& R, double* quaternion)
 	}
 }
 
+/******************** class Geometry *******************/
+//deault construct
+Geometry::Geometry(){}
 
-void Geometry::SetIntrinsicParameter(float f, int u, int v){
+Geometry::~Geometry(){}
+
+
+//for dlt get the K_est
+void Geometry::GetK_est(cv::Matx33d& K) const
+{
+	K = K_estimated;
+}
+
+
+void Geometry::SetIntrinsicParameter(float f, int u, int v)
+{
 	K(0, 0) = f;	K(0, 1) = 0.0;	K(0, 2) = u;
 	K(1, 0) = 0.0;	K(1, 1) = f;	K(1, 2) = v;
 	K(2, 0) = 0.0;	K(2, 1) = 0.0;	K(2, 2) = 1.0;
@@ -115,9 +129,25 @@ void Geometry::SetIntrinsicParameter(float f, int u, int v){
 #endif
 }
 
-void Geometry::SetK(const cv::Matx33d& Ki){
+void Geometry::SetK(const cv::Matx33d& Ki)
+{
 	K = Ki;
 	K_Inv = K.inv();
+}
+
+void Geometry::GetRT(cv::Matx33d& R_est, cv::Vec3d& T_est) const
+{
+	R_est = R; T_est = T;
+}
+
+const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& Geometry::ReturnMatch_2d_3d() const
+{
+	return match_2d_3d;
+}
+
+std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& Geometry::ReturnMatch_2d_3d()
+{
+	return match_2d_3d;
 }
 
 //input projection matrix P and 2d image pixel points - 3d Euclidean coordinates match
@@ -169,8 +199,8 @@ int Geometry::ComputePoseEPnP(){
 	cv::Matx34d P_inlier;
 	int stop = 0;
 	int inlier_num_best = 0;
-	omp_set_num_threads(2);
-#pragma omp parallel for shared(P_inlier, stop, inlier_num_best, match_num) firstprivate(PnP)
+//	omp_set_num_threads(4);
+//#pragma omp parallel for shared(P_inlier, stop, inlier_num_best, match_num) firstprivate(PnP)
 	for (int RANSACnum = 0; RANSACnum < 4000; RANSACnum++)
 	{
 		if (stop) {continue;}
@@ -241,7 +271,7 @@ int Geometry::ComputePoseEPnP(){
 
 		//check better inlier P 
 		if (inlier_num > inlier_num_best){
-#pragma omp critical
+//#pragma omp critical
 			if (inlier_num > inlier_num_best)
 			{
 				inlier_num_best = inlier_num;
@@ -252,7 +282,7 @@ int Geometry::ComputePoseEPnP(){
 		//check if stop RANSAC
 		int inlier_num_thres = (match_num + 1) >> 1;
 		if (inlier_num > 100 || inlier_num > inlier_num_thres&&inlier_num >= 12){
-#pragma omp atomic
+//#pragma omp atomic
 			++stop;
 		}
 		//std::cout << " one RANSAC end: " << pid <<" "<< RANSACnum << std::endl;
@@ -338,7 +368,7 @@ int Geometry::ComputePoseDLT(){
 	int inlier_num_best = 0;
 	int stop = 0;
 	
-#pragma omp parallel for shared(stop, inlier_num_best, P_inlier, match_num)
+//#pragma omp parallel for shared(stop, inlier_num_best, P_inlier, match_num)
 	for (int RANSACnum = 0; RANSACnum < 4000; RANSACnum++){
 		if (stop) { continue; }
 		int index[6];
@@ -392,7 +422,7 @@ int Geometry::ComputePoseDLT(){
 
 		//update the best inlier num
 		if (inlier_num > inlier_num_best){
-#pragma omp critical
+//#pragma omp critical
 			if (inlier_num > inlier_num_best){
 				inlier_num_best = inlier_num;
 				P_inlier = P;
@@ -402,8 +432,8 @@ int Geometry::ComputePoseDLT(){
 		//stop?
 		int inlier_num_thres = (match_num + 1) >> 1;
 		if (inlier_num > 100 || inlier_num > inlier_num_thres&&inlier_num > 12){
-#pragma omp atomic
-			stop++;
+//#pragma omp atomic
+			++stop;
 		}
 	}
 
@@ -843,6 +873,7 @@ double rand(double min, double max)
 	return min + (max - min) * double(rand()) / RAND_MAX;
 }
 
+//use Euler angle to represent rotation matrix
 void random_pose(double R[3][3], double t[3])
 {
 	const double range = 1;
@@ -868,18 +899,34 @@ void random_pose(double R[3][3], double t[3])
 	t[2] = 6.0f;
 }
 
+//generate points in reference of world frame
 void random_point(double & Xw, double & Yw, double & Zw)
 {
-	double theta = rand(0, 3.14159), phi = rand(0, 2 * 3.14159), R = rand(0, +2);
+	double theta = rand(0, 3.14159), phi = rand(0, 2 * 3.14159), R = rand(0, +2.0);
+	//double theta = rand(1.570795, 3.14159), phi = rand(0, 2 * 3.14159), R = rand(0, +2);
 
-	Xw = sin(theta) * sin(phi) * R;
-	Yw = -sin(theta) * cos(phi) * R;
+	Xw = sin(theta) * cos(phi) * R;
+	Yw = sin(theta) * sin(phi) * R;
 	Zw = cos(theta) * R;
+}
+
+void pcam_to_pworld(double R[3][3], double t[3],
+	double Xc, double Yc, double Zc,
+	double&Xw, double&Yw, double&Zw)
+{
+	double tc[3];
+	tc[0] = -R[0][0] * t[0] - R[1][0] * t[1] - R[2][0] * t[2];
+	tc[1] = -R[0][1] * t[0] - R[1][1] * t[1] - R[2][1] * t[2];
+	tc[2] = -R[0][2] * t[0] - R[1][2] * t[1] - R[2][2] * t[2];
+
+	Xw = R[0][0] * Xc + R[1][0] * Yc + R[2][0] * Zc + tc[0];
+	Yw = R[0][1] * Xc + R[1][1] * Yc + R[2][1] * Zc + tc[1];
+	Zw = R[0][2] * Xc + R[1][2] * Yc + R[2][2] * Zc + tc[2];
 }
 
 void project_with_noise(double R[3][3], double t[3],
 	double Xw, double Yw, double Zw,
-	double & u, double & v)
+	double & u, double & v, cv::Point3d &pc)
 {
 	
 	double Xc = R[0][0] * Xw + R[0][1] * Yw + R[0][2] * Zw + t[0];
@@ -888,8 +935,11 @@ void project_with_noise(double R[3][3], double t[3],
 
 	double nu = rand(-noise, +noise);
 	double nv = rand(-noise, +noise);
+	
 	u = uc + fu * Xc / Zc + nu;
-	v = vc + fv* Yc / Zc + nv;
+	v = vc + fv * Yc / Zc + nv;
+
+	pc=cv::Point3d(Xc, Yc, Zc);
 }
 
 bool Orthogonal(const cv::Matx33d& R){
@@ -941,7 +991,8 @@ void Geometry::TestGeometry(){
 	cout << endl;
 
 	auto& match_list = match_2d_3d;
-
+	cv::Point3d pt3d_cam;
+	std::vector<cv::Point3d> list_points3d_in_cam;
 	std::vector<cv::Point3d> list_points3d;
 	std::vector<cv::Point2d> list_points2d;
 
@@ -949,24 +1000,32 @@ void Geometry::TestGeometry(){
 	cv::Mat points_2d(n, 2, CV_64FC1);
 
 	PnP.reset_correspondences();
+	int cnt = 0;
 	for (int i = 0; i < n; i++) {
 		double Xw, Yw, Zw, u, v;
-		random_point(Xw, Yw, Zw);
-		project_with_noise(R_true, t_true, Xw, Yw, Zw, u, v);
-		if (!(u >= 0 && u <= 640 && v >= 0 && v <= 480)){ 
-			i--; continue; 
+		double Xc, Yc, Zc;
+		random_point(Xc, Yc, Zc);
+		pcam_to_pworld(R_true, t_true, Xc, Yc, Zc, Xw, Yw, Zw);
+		project_with_noise(R_true, t_true, Xw, Yw, Zw, u, v, pt3d_cam);
+		if (!(Zc > 0 &&u >= 0 && u <= 640 && v >= 0 && v<=480)){
+			i--; 
+			continue; 
 		}
+	
 		PnP.add_correspondence(Xw, Yw, Zw, u, v);
 		match_list.push_back(std::make_pair(cv::Vec2d(u, v), cv::Vec3d(Xw, Yw, Zw)));
 		list_points2d.push_back(cv::Point2d(u, v));
 		list_points3d.push_back(cv::Point3d(Xw, Yw, Zw));
+		list_points3d_in_cam.push_back(pt3d_cam);
+		
+		//cout << Xc << " " << Yc << " " << Zc << " ";
+		//cout << pt3d_cam.x << " " << pt3d_cam.y << " " << pt3d_cam.z << endl;
 
 		points_2d.ptr<double>(i)[0] = u;
 		points_2d.ptr<double>(i)[1] = v;
 		points_3d.ptr<double>(i)[0] = Xw;
 		points_3d.ptr<double>(i)[1] = Yw;
 		points_3d.ptr<double>(i)[2] = Zw;
-		
 	}
 	double R_est[3][3], t_est[3];
 	double err2 = PnP.compute_pose(R_est, t_est); 

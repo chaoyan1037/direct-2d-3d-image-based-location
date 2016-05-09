@@ -112,13 +112,11 @@ public:
 		mView_list.resize(feature_3d.mView_list.size());
 		mDescriptor.resize(feature_3d.mDescriptor.size());
 
-#pragma omp parallel for
 		for (int i = 0; i < feature_3d.mView_list.size(); ++i)
 		{
 			mView_list[i] = feature_3d.mView_list[i];
 		}
 
-#pragma omp parallel for
 		for (int i = 0; i < feature_3d.mDescriptor.size(); i++)
 		{
 			mDescriptor[i] = feature_3d.mDescriptor[i];
@@ -214,10 +212,12 @@ private:
 
 	std::string						mBundle_file;
 	std::vector< FEATURE_3D_INFO >	mFeature_infos;
+
 	//All_PICTUREs member include pictures and cameras
 	ALL_PICTURES					mAll_pic_cameras;
 
 	//mask the query image as 1
+	//since query is selected from the original bundler out file 
 	std::vector< bool >				mPic_query_mask;
 };
 
