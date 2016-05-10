@@ -7,12 +7,15 @@
 #include <sstream>
 #include <utility>
 
+#include "global.h"
+using global::cout;
+
 //using namespace std;
 using std::string;
 using std::ifstream;
 using std::ofstream;
 using std::istringstream;
-using std::cout;
+//using std::cout;
 using std::endl;
 
 
@@ -27,6 +30,28 @@ PARSE_BUNDLER::~PARSE_BUNDLER()
 	mAll_pic_cameras.ClearPicsCameras();
 	mFeature_infos.clear();
 }
+
+void PARSE_BUNDLER::SetBundleFileName(const std::string &s){
+	mBundle_file = s;
+}
+
+size_t PARSE_BUNDLER::GetNumPoints() const{
+	return mNumbPoints;
+}
+
+size_t PARSE_BUNDLER::GetNumCameras() const{
+	return mNumCameras;
+}
+
+
+//clear all the data
+void  PARSE_BUNDLER::ClearData(){
+	mAll_pic_cameras.ClearPicsCameras();
+	mFeature_infos.clear();
+	mNumbPoints = 0;
+	mNumCameras = 0;
+}
+
 
 //parse the bundler file
 /*Each camera entry contains the estimated camera intrinsics and extrinsics,
@@ -55,7 +80,7 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 {
 	std::ifstream instream(mBundle_file, std::ios::in);
 	if (!instream.is_open()){
-		std::cout << "open bundler fail: " << mBundle_file << std::endl;
+		global::cout << "open bundler fail: " << mBundle_file << std::endl;
 		return 0;
 	}
 
@@ -108,7 +133,6 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 		int view_lenth = 0;
 		instream >> view_lenth;
 		mFeature_infos[i].mView_list.resize(view_lenth);
-		mFeature_infos[i].mDescriptor.resize(view_lenth);
 
 		for (int j = 0; j < view_lenth; j++)
 		{
@@ -133,19 +157,19 @@ bool PARSE_BUNDLER::LoadCameraInfo()
 #pragma omp parallel for
 	for (int i = 0; i < mNumbPoints; ++i)
 	{
+		mFeature_infos[i].mDescriptor.resize(mFeature_infos[i].mView_list.size());
 		for (int j = 0; j < mFeature_infos[i].mView_list.size(); ++j)
 		{
 			auto & view = mFeature_infos[i].mView_list[j];
 			auto & keypoint_vec = picture[mFeature_infos[i].mView_list[j].camera].GetFeaturePoint();
 
 			//do not use SIFT x, y coordinates, of which the origin is the left-up corner
-			//use the bundler x, y coordinates, of which the origin is the center of image
+			////use the bundler x, y coordinates, of which the origin is the center of image
 			view.scale			= keypoint_vec[view.key].scale;
 			view.orientation	= keypoint_vec[view.key].orientation;
 
 			//mDescriptor: the jth descriptor
 			auto & descriptor = picture[mFeature_infos[i].mView_list[j].camera].GetDescriptor();
-
 			mFeature_infos[i].mDescriptor[j] = std::move(descriptor[view.key]);
 		}
 	}
@@ -159,7 +183,7 @@ void PARSE_BUNDLER::FindQueryPicture(const std::string& s)
 {
 	ifstream is(s, std::ios::in);
 	if (is.is_open() == 0){
-		std::cerr << "query_picture_list.txt open fail: "<< s << endl;
+		global::cout << "query_picture_list.txt open fail: "<< s << endl;
 		return;
 	}
 
@@ -178,7 +202,7 @@ void PARSE_BUNDLER::WriteQueryBundler(const std::string& s) const
 {
 	ofstream os(s, std::ios::out | std::ios::trunc);
 	if (0 == os.is_open()){
-		std::cerr << " open query bundle file fail: " << s << endl;
+		global::cout << " open query bundle file fail: " << s << endl;
 		return;
 	}
 
@@ -218,4 +242,100 @@ void PARSE_BUNDLER::WriteQueryBundler(const std::string& s) const
 		}
 	}
 	os.close();
+}
+
+//save the built information so next time directly load the file
+//format::
+//#3d points
+//each line contain all descriptor of one 3d points
+bool PARSE_BUNDLER::SaveFeature3DInfro(const std::string&s) const
+{
+	if (mNumbPoints != mFeature_infos.size()){
+		global::cout << "PARSE_BUNDLER: mNumbPoints != mFeature_infos.size() when save." << endl;
+		return 0;
+	}
+
+	std::ofstream os(s, std::ios::trunc|std::ios::out);
+	if (!os.is_open()){
+		global::cout << "open parsed_bundler.txt fail when save." << endl;
+		return 0;
+	}
+
+	os << mNumbPoints << endl;
+	size_t num_desc = 0;
+	//each 3d points a line
+	for (auto& feat_3d_info : mFeature_infos){
+		//num_desc = feat_3d_info.mDescriptor.size();
+		for (auto& sift_desc : feat_3d_info.mDescriptor){
+			for (int i = 0; i < sift_desc.legth; i++){
+				os << int(sift_desc.ptrDesc[i]) << " ";
+			}
+		}
+		os << endl;
+	}
+
+	os.close();
+	return true;
+}
+
+bool PARSE_BUNDLER::LoadFeature3DInfro(const std::string&s)
+{
+	std::ifstream is(s, std::ios::in);
+	if (!is.is_open()){
+		global::cout << "open parsed_bundler.txt fail when load." << endl;
+		return 0;
+	}
+
+	int num_points = 0;
+	is >> num_points;
+	if (num_points != mFeature_infos.size()){
+		global::cout << "PARSE_BUNDLER: mNumbPoints != mFeature_infos.size() when load." << endl;
+	}
+
+	int desc_temp = 0;
+	std::string line;
+	//each 3d points a line
+	for (auto& feat_3d_info : mFeature_infos){
+		feat_3d_info.mDescriptor.clear();
+		feat_3d_info.mDescriptor.resize(feat_3d_info.mView_list.size());
+		//num_desc = feat_3d_info.mDescriptor.size();
+		for (auto& sift_desc : feat_3d_info.mDescriptor){
+			sift_desc.ptrDesc = new unsigned char[sift_desc.legth];
+			if (!sift_desc.ptrDesc){
+				global::cout << " new unsigned char fail. parsebundelr.cpp ;ine 306" << endl;
+			}
+			for (int i = 0; i < sift_desc.legth; i++){
+				if(is >> desc_temp){
+					sift_desc.ptrDesc[i] = (unsigned char)desc_temp;
+				}
+				else {
+					global::cout << "copy desc from txt err." << endl;
+					return 0;
+				}
+			}
+		}
+	}
+
+	return 1;
+}
+
+
+std::vector< FEATURE_3D_INFO >& PARSE_BUNDLER::GetFeature3DInfo()
+{
+	return mFeature_infos;
+}
+
+const std::vector< FEATURE_3D_INFO >& PARSE_BUNDLER::GetFeature3DInfo() const
+{
+	return mFeature_infos;
+}
+
+ALL_PICTURES& PARSE_BUNDLER::GetAllPicturesAndCameras()
+{
+	return mAll_pic_cameras;
+}
+
+const ALL_PICTURES& PARSE_BUNDLER::GetAllPicturesAndCameras()const
+{
+	return mAll_pic_cameras;
 }

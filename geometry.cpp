@@ -23,12 +23,15 @@
 #include "Timer/timer.h"
 #include "Epnp/epnp.h"
 #include "sba_warper/sba_warper.h"
+#include "global.h"
 
 //estimate camera pose from 2d-3d correspondence
 //both DLT method and ePnP method implemented
 
-using std::cout;
+//using std::cout;
 using std::endl;
+
+using global::cout;
 
 //#define TSET_GEOMETRY
 
@@ -185,8 +188,11 @@ int Geometry::ComputePoseEPnP(){
 
 	const int match_num = (int)match_2d_3d.size();
 	
-	std::cout << "match_num when compute pose is: " << match_num << std::endl;
-	if (match_num < 12){ return 0; std::cout << "not enough match_num" << std::endl; }
+	global::cout << "match_num when compute pose is: " << match_num << std::endl;
+	if (match_num < 12){ 
+		global::cout << "not enough match_num" << std::endl;
+		return 0;
+	}
 
 	//original epnp class use new and delete , when use OpenMp, you must make sure
 	//there is no copy or assign operation on epnp. so I modify the original epnp class
@@ -209,7 +215,7 @@ int Geometry::ComputePoseEPnP(){
 		int prosac_time = (10 + RANSACnum) < match_num ? (10 + RANSACnum) : (match_num);
 
 		//int pid = omp_get_thread_num();
-		//std::cout << " RANSAC start: " << pid << std::endl;
+		//cout << " RANSAC start: " << pid << std::endl;
 
 		//every time generate 5 pair
 		for (int j = 0; j < 5; j++){
@@ -225,7 +231,7 @@ int Geometry::ComputePoseEPnP(){
 			else { index[j] = n; }
 		}
 
-		//std::cout << " select seed: " << pid << std::endl;
+		//cout << " select seed: " << pid << std::endl;
 
 		PnP.reset_correspondences();
 		for (int i = 0; i < 5; i++){
@@ -237,10 +243,10 @@ int Geometry::ComputePoseEPnP(){
 			v  = match_2d_3d[index[i]].first[1];
 			PnP.add_correspondence(Xw, Yw, Zw, u, v);
 		}
-		//std::cout << " set correspondence: " << pid << " "<< PnP.get_correspondence_number() << std::endl;
+		//cout << " set correspondence: " << pid << " "<< PnP.get_correspondence_number() << std::endl;
 		double R_est[3][3], T_est[3];
 		PnP.compute_pose(R_est, T_est);
-		//std::cout << " compute_pose: " << pid << std::endl;
+		//cout << " compute_pose: " << pid << std::endl;
 		for (int i = 0; i < 3; i++){
 			for (int j = 0; j < 3; j++){
 				R(i, j) = R_est[i][j];
@@ -267,7 +273,7 @@ int Geometry::ComputePoseEPnP(){
 				inlier_num++;
 			}
 		}
-		//std::cout << "reprojection error:" << pid << std::endl;
+		//cout << "reprojection error:" << pid << std::endl;
 
 		//check better inlier P 
 		if (inlier_num > inlier_num_best){
@@ -285,17 +291,17 @@ int Geometry::ComputePoseEPnP(){
 //#pragma omp atomic
 			++stop;
 		}
-		//std::cout << " one RANSAC end: " << pid <<" "<< RANSACnum << std::endl;
+		//cout << " one RANSAC end: " << pid <<" "<< RANSACnum << std::endl;
 	}
 
-	//std::cout << " all RANSAC end" << std::endl;
+	//cout << " all RANSAC end" << std::endl;
 	std::vector<int> inlier_match_index_list;
 	std::vector<bool> bInlier_(match_num, 0);
 	int inlier_num_last = 0, inlier_num_cur = 0;
 	double err2 = 0.0;
 
 	binlier.assign(match_num, 0);
-	//std::cout << " start refine" << std::endl;
+	//cout << " start refine" << std::endl;
 	//refine the inlier
 	while (1)
 	{
@@ -346,8 +352,8 @@ int Geometry::ComputePoseEPnP(){
 		inlier_num_last = inlier_num_cur;
 		binlier.swap(bInlier_);
 	}
-	//std::cout << "epnp inlier match num: " << inlier_num_last << std::endl;
-	//std::cout << "epnp reprojection error: " << err2 << std::endl;
+	//cout << "epnp inlier match num: " << inlier_num_last << std::endl;
+	//cout << "epnp reprojection error: " << err2 << std::endl;
 	return inlier_num_last;
 }
 
@@ -358,8 +364,11 @@ int Geometry::ComputePoseDLT(){
 
 	const int match_num = (int)match_2d_3d.size();
 	
-	std::cout << "match_num when compute pose is: " << match_num << std::endl;
-	if (match_num < 12){ return 0; std::cout << "not enough match_num " << std::endl; }
+	global::cout << "match_num when compute pose is: " << match_num << std::endl;
+	if (match_num < 12){
+		global::cout << "not enough match_num " << std::endl; 
+		return 0;
+	}
 
 	cv::Matx34d P_inlier;
 
@@ -480,9 +489,9 @@ int Geometry::ComputePoseDLT(){
 		binlier.swap(bInlier_);
 	}
 
-	std::cout << "inlier match num: " <<inlier_num_last << std::endl;
+	global::cout << "inlier match num: " << inlier_num_last << std::endl;
 	if (inlier_num_last < 6){
-		std::cout << "not enough inlier, no pose calculated." << std::endl;
+		global::cout << "not enough inlier, no pose calculated." << std::endl;
 		return 0;
 	}
 
@@ -501,7 +510,7 @@ int Geometry::ComputePoseDLT(){
 	// a calibration  and a rotation matrix and the position of a camera.
 	cv::decomposeProjectionMatrix(P, K_estimated, R, camera_position);
 	K_estimated = 1.0 / K_estimated(2,2)*K_estimated;
-	//std::cout << "estimated K is: " <<endl<< K_estimated << std::endl;
+	//cout << "estimated K is: " <<endl<< K_estimated << std::endl;
 	//cout << "determinent of K: " << M3Det(K_estimated) << endl;
 
 	camera_position = (1.0 / camera_position[3])*camera_position;
@@ -528,7 +537,7 @@ bool Geometry::CM_Compute(cv::Matx34d& P,
 
 	int row_num = (int)match_2d_3d.size();
 	if (row_num < 6){
-		std::cout << "match_2d_3d num is less than 6. geometry.cpp line 436" << std::endl;
+		global::cout << "match_2d_3d num is less than 6. geometry.cpp line 436" << std::endl;
 		return 0;
 	}
 
@@ -679,7 +688,7 @@ bool Geometry::RefinePoseSBA(const bool K_fixed)
 	//TODO£º use try and catch
 	if (!sba.vmask || !sba.para_camera || !sba.para_3dpoints || !sba.para_2dpoints)
 	{
-		std::cerr << "new error. geometry.cpp line 601" << std::endl;
+		global::cout << "new error. geometry.cpp line 601" << std::endl;
 	}
 	int j = 0;
 	//prepare 3d points and image points coordinates
@@ -718,14 +727,14 @@ bool Geometry::RefinePoseSBA(const bool K_fixed)
 
 	std::ofstream os("sba_debug1.txt", std::ios::out | std::ios::trunc);
 	if (!os){
-		std::cout << "sba_debug.txt file open fail." << std::endl;
+		global::cout << "sba_debug.txt file open fail." << std::endl;
 	}
 	sba.print(os);
 	os.close();
 
 	if ( 0 == SbaMotionOnly(sba) )
 	{
-		std::cout << " call SbaMotionOnly fail. " << std::endl;
+		global::cout << " call SbaMotionOnly fail. " << std::endl;
 		return 0; //fail
 	}
 	
@@ -845,15 +854,15 @@ bool Geometry::RefinePoseTooN()
 	R_est = ini.get_rotation().get_matrix();
 	T_est = ini.get_translation();
 
-	cout << "after refine TooN: " << endl;
+	global::cout << "after refine TooN: " << endl;
 	for (int i = 0; i < 3; i++){
 		for (int j = 0; j < 3; j++){
-			cout << R_est[i][j] << " ";
+			global::cout << R_est[i][j] << " ";
 		}
-		cout << endl;
+		global::cout << endl;
 	}
-	cout << T_est[0] << " " << T_est[1] << " ";
-	cout << T_est[2] << endl; 
+	global::cout << T_est[0] << " " << T_est[1] << " ";
+	global::cout << T_est[2] << endl;
 	
 	return 1;
 }
@@ -985,10 +994,10 @@ void Geometry::TestGeometry(){
 		}
 		std::cout << std::endl;
 	}
-	std::cout << "ground truth t: " ;
+	std::cout << "ground truth t: ";
 	for (int i = 0; i < 3; i++)
 		std::cout << t_true[i] << " ";
-	cout << endl;
+	std::cout << endl;
 
 	auto& match_list = match_2d_3d;
 	cv::Point3d pt3d_cam;
@@ -1130,26 +1139,26 @@ void Geometry::TestGeometry(){
 #if 0
 	double quat[4] = { 0, 0, 0, 0 };
 	RotationToQuaterion(R_dlt, quat);
-	std::cout << "RotationToQuaterion Q: "
+	cout << "RotationToQuaterion Q: "
 		<< quat[0] << " " << quat[1] << " "
 		<< quat[2] << " " << quat[3] << std::endl;
 
 	cv::Matx33d	R_quat;
 	QuaternionToRotation(quat, R_quat);
-	std::cout << "QuaternionToRotation R:" << std::endl << R_quat << std::endl;
+	cout << "QuaternionToRotation R:" << std::endl << R_quat << std::endl;
 	
 #endif
 	/*******************************************************/
 #if 0
 
 	//for (int i = 0; i < 1000; i++)
-	std::cout << "epnp inlier: " << ComputePoseEPnP() << std::endl;
+	cout << "epnp inlier: " << ComputePoseEPnP() << std::endl;
 	GetRT(R_dlt, t_dlt);
-	std::cout << "epnp R: " << std::endl << R_dlt << std::endl;
-	std::cout << "epnp t: " << std::endl << t_dlt << std::endl;
+	cout << "epnp R: " << std::endl << R_dlt << std::endl;
+	cout << "epnp t: " << std::endl << t_dlt << std::endl;
 	
-	std::cout << "Detm(R): " << M3Det(R_dlt) << std::endl;
-	std::cout << "Orthogonal: " << Orthogonal(R_dlt) << std::endl;
+	cout << "Detm(R): " << M3Det(R_dlt) << std::endl;
+	cout << "Orthogonal: " << Orthogonal(R_dlt) << std::endl;
 
 #endif
 
@@ -1163,9 +1172,9 @@ void Geometry::TestGeometry(){
 	cv::solvePnPRansac(list_points3d, list_points2d, K, distCoeffs, Rvec, Tvec, false, 4000, 10.0, 0.99, inliers, CV_P3P);
 	//cv::solvePnPRansac(points_3d, points_2d, K, distCoeffs, Rvec, Tvec, false, 4000, 10.0, 0.99, inliers, CV_P3P);
 	cv::Rodrigues(Rvec, Rmat);
-	std::cout << "solvePnPRansac inlier: " << inliers.rows << std::endl;
-	std::cout << "R: " << std::endl << Rmat << std::endl;
-	std::cout << "T: " << std::endl << Tvec << std::endl;
+	cout << "solvePnPRansac inlier: " << inliers.rows << std::endl;
+	cout << "R: " << std::endl << Rmat << std::endl;
+	cout << "T: " << std::endl << Tvec << std::endl;
 
 #endif
 

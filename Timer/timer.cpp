@@ -1,8 +1,10 @@
 #include "timer.h"
-
+#include "global.h"
 
 #include <sstream>
 #include <iostream>
+
+using global::cout;
 
 Timer::Timer(){
 	mElapsed_time	= 0.0;
@@ -37,7 +39,7 @@ void Timer::Stop(){
 	mElapsed_time += (mTime_end - mTime_start);
 
 	if (mTime_end < mTime_start){
-		std::cerr << " error: mTime_end is smaller than mTime_start. timer.cpp line 39" << std::endl;
+		global::cout << " error: mTime_end is smaller than mTime_start. timer.cpp line 39" << std::endl;
 	}
 }
 

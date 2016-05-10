@@ -187,6 +187,7 @@
     <ClCompile Include="exif_reader\jhead-2.90\makernote.cpp" />
     <ClCompile Include="exif_reader\jhead-2.90\paths.cpp" />
     <ClCompile Include="geometry.cpp" />
+    <ClCompile Include="global.cpp" />
     <ClCompile Include="PreProcess\bundlercamera.cpp" />
     <ClCompile Include="PreProcess\parsebundler.cpp" />
     <ClCompile Include="PreProcess\picture.cpp" />
@@ -201,6 +202,7 @@
     <ClInclude Include="exif_reader\exif_reader.h" />
     <ClInclude Include="exif_reader\jhead-2.90\jhead.h" />
     <ClInclude Include="geometry.h" />
+    <ClInclude Include="global.h" />
     <ClInclude Include="MEstimator.h" />
     <ClInclude Include="PreProcess\bundlercamera.h" />
     <ClInclude Include="PreProcess\parsebundler.h" />

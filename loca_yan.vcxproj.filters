@@ -79,6 +79,9 @@
     <ClCompile Include="exif_reader\jhead-2.90\paths.cpp">
       <Filter>Source Files\exif_reader\jhead-2.90</Filter>
     </ClCompile>
+    <ClCompile Include="global.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="visualwords.h">
@@ -116,6 +119,9 @@
     </ClInclude>
     <ClInclude Include="exif_reader\jhead-2.90\jhead.h">
       <Filter>Source Files\exif_reader\jhead-2.90</Filter>
+    </ClInclude>
+    <ClInclude Include="global.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

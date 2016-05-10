@@ -5,12 +5,16 @@
 #include <memory>
 #include <omp.h>
 
+#include "global.h"
 #include "timer/timer.h"
 #include "exif_reader/exif_reader.h"
 
+using std::endl;
+using std::string;
+using global::cout;
+
 int SIFT_Descriptor::legth = 128;
 
-using namespace std;
 
 //calculate the distance between the two sift descriptor
 int CalculateSIFTDistanceSquared(const unsigned char* d1, const unsigned char* d2)
@@ -55,11 +59,11 @@ void PICTURE::ClearData()
 }
 
 //load  key points and descriptors  
-bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bCenter_image)
+bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bHave_image_size)
 {
-	ifstream infile(des_filename, ios::in);
+	std::ifstream infile(des_filename, std::ios::in);
 	if (!infile.is_open()){
-		cout << " key file open fail" <<des_filename <<endl;
+		global::cout << " key file open fail" <<des_filename <<endl;
 		return 0;
 	}
 
@@ -78,18 +82,19 @@ bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bCenter_i
 		infile >> sift_keypt.y >> sift_keypt.x 
 			>> sift_keypt.scale >> sift_keypt.orientation;
 
-		
-		assert(mImageHeight>0 && mImgaeWidth>0);
-		//origin: right_bottom, x-axis points left, y-axis points up
-		sift_keypt.x = mImgaeWidth - 1.0 - sift_keypt.x;
-		sift_keypt.y = mImageHeight - 1.0 - sift_keypt.y;
-		// center the keypoints around the center of the image
-		// first we need to get the dimensions of the image
-		//sift_keypt.x -= (mImgaeWidth - 1.0) / 2.0f;
-		//sift_keypt.y = (mImageHeight - 1.0) / 2.0f - sift_keypt.y;
-			
-		//origin: left_bottom, x-axis points right, y-axis points up
-		//sift_keypt.y = mImageHeight - 1.0 - sift_keypt.y;
+		if (bHave_image_size){
+			assert(mImageHeight>0 && mImgaeWidth > 0);
+			//origin: right_bottom, x-axis points left, y-axis points up
+			sift_keypt.x = mImgaeWidth - 1.0 - sift_keypt.x;
+			sift_keypt.y = mImageHeight - 1.0 - sift_keypt.y;
+			// center the keypoints around the center of the image
+			// first we need to get the dimensions of the image
+			//sift_keypt.x -= (mImgaeWidth - 1.0) / 2.0f;
+			//sift_keypt.y = (mImageHeight - 1.0) / 2.0f - sift_keypt.y;
+
+			//origin: left_bottom, x-axis points right, y-axis points up
+			//sift_keypt.y = mImageHeight - 1.0 - sift_keypt.y;
+		}
 				
 		//directly operate on the desc
 		//do not use temp variable and then push_back it into the vector
@@ -98,7 +103,7 @@ bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bCenter_i
 
 		sift_desc.ptrDesc = new unsigned char[sift_desc.legth];
 		if (sift_desc.ptrDesc == nullptr || mDes_length != sift_desc.legth){
-			std::cerr << "new error(picture.cpp, line 56)" << std::endl;
+			global::cout << "new error(picture.cpp, line 56)" << std::endl;
 			return 0;
 		}
 
@@ -151,23 +156,23 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 	//first clear all pictures if already loaded
 	ClearPics();
 
-	ifstream infile(mKeyfilepath + '/' + mPicturelistfile, std::ios::in);
+	std::ifstream infile(mKeyfilepath + '/' + mPicturelistfile, std::ios::in);
 	if (!infile.is_open()){
-		cout << "Open list file fail: " << mPicturelistfile << endl;
+		global::cout << "Open list file fail: " << mPicturelistfile << endl;
 		return 0;
 	}
 
-	vector<string> pic_keyfilename;
-	string  line_in_file;
-	string	picture_filename;
+	std::vector<string> pic_keyfilename;
+	std::string  line_in_file;
+	std::string	picture_filename;
 	int		temp_zero = 0;
 	double	temp_f = 0.0;
 	while ( getline(infile, line_in_file) )
 	{
-		istringstream words_in_line(line_in_file);
+		std::istringstream words_in_line(line_in_file);
 		words_in_line >> picture_filename;
 	
-		picture_filename.erase(0, 2);
+		//picture_filename.erase(0, 2);
 		pic_keyfilename.push_back(picture_filename);
 		
 		if (false == mIsqueryimage) continue;
@@ -198,7 +203,7 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 			//int img_width, img_height;
 			//img_width = exif_reader::get_image_width();
 			//img_height = exif_reader::get_image_height();
-			//std::cout << "image size: " << img_width << " , " << img_height << std::endl;
+			//cout << "image size: " << img_width << " , " << img_height << std::endl;
 			mPictures[i].SetImageSize(exif_reader::get_image_height(), exif_reader::get_image_width());
 			exif_reader::close_exif();
 		}
@@ -213,7 +218,7 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 	}
 
 	timer.Stop();
-	cout << "load picture keys time: " << timer.GetElapsedTimeAsString() << endl;
+	global::cout << "load picture keys time: " << timer.GetElapsedTimeAsString() << endl;
 	return 1;
 }
 
@@ -243,11 +248,11 @@ bool ALL_PICTURES::LoadCamerasPose(const std::string& s)
 
 	std::ifstream instream(s, std::ios::in);
 	if (!instream.is_open()){
-		std::cout << "open bundler fail: " << s << std::endl;
+		global::cout << "open bundler fail: " << s << std::endl;
 		return 0;
 	}
-	string line;
-	getline(instream, line);//header
+	std::string line;
+	std::getline(instream, line);//header
 
 	int num_cam = 0, num_points = 0;
 	instream >> num_cam >> num_points;
@@ -279,6 +284,6 @@ bool ALL_PICTURES::LoadCamerasPose(const std::string& s)
 	instream.close();
 
 	timer.Stop();
-	cout << "load camera true pose time: " << timer.GetElapsedTimeAsString() << endl;
+	global::cout << "load camera true pose time: " << timer.GetElapsedTimeAsString() << endl;
 	return 1;
 }

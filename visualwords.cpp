@@ -9,8 +9,13 @@
 #include "preprocess/picture.h"
 #include "timer/timer.h"
 #include "geometry.h"
+#include "global.h"
 
-using namespace std;
+using std::ifstream;
+using std::ofstream;
+using std::endl;
+
+using global::cout;
 
 /************ class VISUALWORDS_HANDLER ***************/
 //default constructor
@@ -38,7 +43,7 @@ bool VISUALWORDS_HANDLER::LoadDBVisualWords()
 	cv::Mat visual_words(mNum_visualwords, 128, CV_32FC1);
 	ifstream instream(mVisualwords_file, std::ios::in);
 	if (!instream.is_open()) {
-		cout << "visual words open fail: " << mVisualwords_file << endl;
+		global::cout << "visual words open fail: " << mVisualwords_file << endl;
 		return 0;
 	}
 
@@ -60,7 +65,7 @@ bool VISUALWORDS_HANDLER::BuildIndex()
 {
 	if (mDB_visualwords.empty())
 	{
-		cout << "visual words database is empty." << endl;
+		global::cout << "visual words database is empty." << endl;
 		return 0;
 	}
 	//use only one kd-tree
@@ -69,7 +74,7 @@ bool VISUALWORDS_HANDLER::BuildIndex()
 }
 
 //do knn search  k=2;
-bool VISUALWORDS_HANDLER::KnnSearch(const vector<SIFT_Descriptor>& query_des,
+bool VISUALWORDS_HANDLER::KnnSearch(const std::vector<SIFT_Descriptor>& query_des,
 	cv::Mat& indices, cv::Mat& dists, int knn)
 {
 	//convert the query format into cv::Mat 
@@ -84,7 +89,7 @@ bool VISUALWORDS_HANDLER::KnnSearch(const vector<SIFT_Descriptor>& query_des,
 		}
 	}
 	time1 = (double)GetTickCount() - time1;
-	//cout << "visual words knn search time: " << time1 << endl;
+	//global::cout << "visual words knn search time: " << time1 << endl;
 	
 	mVW_index.knnSearch(query_des_mat, indices, dists, knn, cv::flann::SearchParams(10));//path number
 	
@@ -133,7 +138,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::BuildIndex3DPoints()
 		for (int j = 0; j < indices.rows; j++)
 		{
 			int vw_index_id = indices.ptr<int>(j)[0];
-			mVisualwords_index_3d[vw_index_id].insert(make_pair(i, (int)feature_info[i].mView_list.size()));
+			mVisualwords_index_3d[vw_index_id].insert(std::make_pair(i, (int)feature_info[i].mView_list.size()));
 		}
 	}
 
@@ -149,7 +154,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::SaveIndex3DPoints(const std::string&s) const
 {
 	std::ofstream of(s, std::ios::out | std::ios::trunc);
 	if (0 == of.is_open()){
-		std::cerr << " open index_3d_points file fail: " << s << std::endl;
+		global::cout << " open index_3d_points file fail: " << s << std::endl;
 		return 0;
 	}
 
@@ -180,7 +185,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LoadIndex3DPoints(const std::string& s)
 {
 	std::ifstream is(s, std::ios::in);
 	if (0 == is.is_open()){
-		std::cerr << " open index_3d_points file fail: " << s << std::endl;
+		global::cout << " open index_3d_points file fail: " << s << std::endl;
 		return 0;
 	}
 	size_t num_VM_records = 0;
@@ -194,7 +199,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LoadIndex3DPoints(const std::string& s)
 	for (size_t i = 0; i < num_VM_records; i++){
 		is >> VW_index;
 		getline(is, line);
-		istringstream istream(line);
+		std::istringstream istream(line);
 		int num_1 = 0, num_2 = 0;
 		while (istream>>num_1)
 		{
@@ -214,40 +219,50 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 {
 	Timer timer;
 	timer.Start();
-	//load the database pictures
-	auto& mPicCam_db = mParse_bundler.GetAllPicturesAndCameras();
-	mPicCam_db.LoadPicturesKeyFile();
-	timer.Stop();
-	std::cout << "Load database pictures time: " << timer.GetElapsedTimeAsString() << std::endl;
-
-	timer.ReStart();
 	mParse_bundler.ParseBundlerFile();
-	mParse_bundler.LoadCameraInfo();
+
+	//load the desc directly from parsed_bundler.txt
+	ifstream is_desc("parsed_bundler.txt", std::ios::_Nocreate);
+	if (is_desc.is_open() && mParse_bundler.LoadFeature3DInfro("parsed_bundler.txt")){
+		global::cout << "load parsed_bundler.txt" << endl;
+		is_desc.close();
+	}
+	else{
+		//load the database pictures
+		auto& mPicCam_db = mParse_bundler.GetAllPicturesAndCameras();
+		mPicCam_db.LoadPicturesKeyFile();
+		mParse_bundler.LoadCameraInfo();
+		//after load bundler and execute LoadCameraInfo, release the pictures
+		mPicCam_db.ClearPics();
+		mParse_bundler.SaveFeature3DInfro("parsed_bundler.txt");
+		global::cout << "load .key files and save parsed_bundler.txt" << endl;
+	}
+
 	timer.Stop();
-	std::cout << "Parse Bundler file time: " << timer.GetElapsedTimeAsString() << std::endl;
+	global::cout << "Parse Bundler file time: " << timer.GetElapsedTimeAsString() << std::endl;
 
-	//after load bundler and execute LoadCameraInfo, release the pictures
-	mPicCam_db.ClearPics();
 
-	timer.ReStart();
+	timer.Start();
 	mVW_handler.LoadDBVisualWords();
 	timer.Stop();
-	std::cout << "Load visual words time: " << timer.GetElapsedTimeAsString() << std::endl;
+	global::cout << "Load visual words time: " << timer.GetElapsedTimeAsString() << std::endl;
 	
-	timer.ReStart();
+	timer.Start();
 	mVW_handler.BuildIndex();
+
 	ifstream is("index_3dpoints.txt", std::ios::_Nocreate);
 	if (1 == is.is_open() && LoadIndex3DPoints("index_3dpoints.txt"))
 	{
-		cout << "load index_3dpoints.txt" << endl;
+		global::cout << "load index_3dpoints.txt" << endl;
+		is.close();
 	}
 	else{
 		BuildIndex3DPoints();
 		SaveIndex3DPoints("index_3dpoints.txt");
-		cout << "build index and save index_3dpoints.txt" << endl;
+		global::cout << "build index and save index_3dpoints.txt" << endl;
 	}
 	timer.Stop();
-	std::cout << "Build visual words index time: " << timer.GetElapsedTimeAsString() << std::endl;
+	global::cout << "Build visual words index time: " << timer.GetElapsedTimeAsString() << std::endl;
 
 	return 1;
 }
@@ -282,7 +297,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 		std::cerr << "error:visualwords.cpp line 281" << std::endl;
 		return false;
 	}
-	std::cout << "start find feature's corresp" << std::endl;
+	global::cout << "start find feature's corresp" << std::endl;
 
 	//feature matched 3d point
 	std::vector<int> feat_matched_3d_point(pic_feat_desc.size(), -1);
@@ -345,7 +360,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const PICTURE& picture)
 			10 * 10 * min_distance_squared[0] < 8 * 8 * min_distance_squared[1])
 		{
 			mFeature_3d_point_correspondence_mask[i] = true;
-			mFeature_3d_point_correspondence.push_back(make_pair(i, min_distance_3d_point_index[0]));
+			mFeature_3d_point_correspondence.push_back(std::make_pair(i, min_distance_3d_point_index[0]));
 			//check if there are enough correspondence and stop now
 //#pragma omp atomic 
 			++cnt_matched_feature;
@@ -367,9 +382,9 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture, LO
 	Timer timer;
 	timer.Start();
 	//0: can not find enough 2d-3d correspondence
-	std::cout << "start find corresp" << std::endl;
+	global::cout << "start find corresp" << std::endl;
 	if (0 == FindCorrespondence(picture)){
-		std::cout << "not enough putative matches" << std::endl;
+		global::cout << "not enough putative matches" << std::endl;
 		timer.Stop();
 		result.time_findcorresp = timer.GetElapsedTimeMilliSecond();
 		return 0;
@@ -377,7 +392,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture, LO
 	timer.Stop();
 	result.time_findcorresp = timer.GetElapsedTimeMilliSecond();
 	
-	std::cout << "after find corresp" << std::endl;
+	global::cout << "after find corresp" << std::endl;
 
 	timer.ReStart();
 	
@@ -399,13 +414,13 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture, LO
 			cv::Vec2d(pt_2d.x, pt_2d.y),
 			cv::Vec3d(sign*pt_3d.x, pt_3d.y, sign*pt_3d.z)));
 	}
-	std::cout << "geo" << std::endl;
+	global::cout << "geo" << std::endl;
 
 	result.num_putative_match = mat_2d_3d.size();
 
 	//if have intrinsics then use epnp
 	if (true == result.have_intrinsics){
-		std::cout << "compute pose epnp" << std::endl;
+		global::cout << "compute pose epnp" << std::endl;
 		geo.SetK(result.K);
 		//geo.SetIntrinsicParameter(result.K(0, 0), 0, 0);
 		result.num_inlier_match = geo.ComputePoseEPnP();
@@ -415,13 +430,11 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture, LO
 		result.rotation(1, 0) = -result.rotation(1, 0);
 		result.rotation(1, 2) = -result.rotation(1, 2);
 		result.rotation(2, 1) = -result.rotation(2, 1);
-		result.translation[0] = -result.translation[0];
-		result.translation[2] = -result.translation[2];
+		
 	}
 	else{
-		std::cout << "compute pose dlt" << std::endl;
+		global::cout << "compute pose dlt" << std::endl;
 		result.num_inlier_match = geo.ComputePoseDLT();
-		geo.RefinePoseSBA(0);
 		geo.GetRT(result.rotation, result.translation);
 		result.rotation(0, 0) = -result.rotation(0, 0);
 		result.rotation(0, 1) = -result.rotation(0, 1);
@@ -429,14 +442,15 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const PICTURE& picture, LO
 		result.rotation(2, 0) = -result.rotation(2, 0);
 		result.rotation(2, 1) = -result.rotation(2, 1);
 		result.rotation(2, 2) = -result.rotation(2, 2);
-		result.translation[0] = -result.translation[0];
-		result.translation[2] = -result.translation[2];
+
 		//only for DLT, get the estimated K
 		geo.GetK_est(result.K);
 	}
-	
+	result.translation[0] = -result.translation[0];
+	result.translation[2] = -result.translation[2];
+
 	timer.Stop();
-	cout << " locate single image time: " << timer.GetElapsedTimeMilliSecond() << endl;
+	global::cout << " locate single image time: " << timer.GetElapsedTimeMilliSecond() << endl;
 	result.time_computepose = timer.GetElapsedTimeMilliSecond() - result.time_findcorresp;
 	
 	if (0 == result.num_inlier_match){ return 0; }
@@ -465,7 +479,7 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 	//can not use openMP parallel here, since VISUALWORDS_3DPOINT_HANDLER is shared
 	for (int i = 0; i < pic_query.size(); i++)
 	{
-		cout << "start locating image " << i << endl;
+		global::cout << "start locating image " << i << endl;
 		if (pic_query_focal[i] > 0){
 			mLocate_result[i].have_intrinsics = true;
 			mLocate_result[i].K(0, 0) = pic_query_focal[i];
@@ -478,7 +492,7 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 		}
 		LocateSinglePicture(pic_query[i], mLocate_result[i]);
 		if (0 == mLocate_result[i].located_image) continue;
-		cout << "success locating image " << i << endl;
+		global::cout << "success locating image " << i << endl;
 
 		mNum_locatedimage++;
 
@@ -486,7 +500,7 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 		//calculate the rotation err
 		cv::Matx33d R_diff = (cam_query_true[i].rotation * mLocate_result[i].rotation.t());
 		RotationToQuaterion(R_diff, quat);
-		cout << "after rotation to quat " << endl;
+		global::cout << "after rotation to quat " << endl;
 
 		double cos_half_phi, sin_half_phi;
 		cos_half_phi = quat[0];
@@ -494,21 +508,21 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 
 		//atan2(sin_half_phi, cos_half_phi) is phi/2, so it is 2 * 180 /PI
 		mLocate_result[i].error_rotation = atan2(sin_half_phi, cos_half_phi) * 360.0 / PI;
-		cout << "after atan2 " << endl;
+		global::cout << "after atan2 " << endl;
 
 		cv::Vec3d err_trans = cam_query_true[i].translation - mLocate_result[i].translation;
 		mLocate_result[i].error_translation = std::sqrt(err_trans[0] * err_trans[0] 
 			+ err_trans[1] * err_trans[1] + err_trans[2] * err_trans[2]);
 
-		cout << "end locating image " << i << endl;
+		global::cout << "end locating image " << i << endl;
 	}
 
-	cout << "start write result " << endl;
+	global::cout << "start write result " << endl;
 	//save the result into a txt file
 	SaveLocalizationResult("result.txt", 2);
 
 	timer.Stop();
-	std::cout << "locate all images time: " << timer.GetElapsedTimeAsString() << std::endl;
+	global::cout << "locate all images time: " << timer.GetElapsedTimeAsString() << std::endl;
 }
 
 //save the localization result
@@ -520,7 +534,7 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s, c
 {
 	std::ofstream os(s, std::ios::trunc);
 	if (false == os.is_open()){
-		std::cout << "open result file fail: " << s << std::endl;
+		global::cout << "open result file fail: " << s << std::endl;
 		return;
 	}
 
@@ -531,6 +545,7 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s, c
 	{
 		auto & res = mLocate_result[i];
 		os	<< res.located_image << " "
+			<< res.have_intrinsics << " "
 			<< res.num_putative_match << " "
 			<< res.num_inlier_match << " "
 			<< res.time_findcorresp << " "

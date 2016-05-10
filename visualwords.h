@@ -33,7 +33,7 @@ public:
 
 	//knn search  k=2;
 	bool KnnSearch(const std::vector<SIFT_Descriptor>& query_des,
-		cv::Mat& indices, cv::Mat& dists, int knn = 2) ;
+		cv::Mat& indices, cv::Mat& dists, int knn = 2);
 
 private:
 

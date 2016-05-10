@@ -153,27 +153,17 @@ public:
 	PARSE_BUNDLER(const std::string &s) :mBundle_file(s), mNumbPoints(0), mNumCameras(0){}
 
 	//set the bundler file name
-	void SetBundleFileName(const std::string &s){
-		mBundle_file = s;
-	}
+	void SetBundleFileName(const std::string &s);
 
 	//get the number of 3d points in reconstruction
-	size_t GetNumPoints() const{
-		return mNumbPoints;
-	}
+	size_t GetNumPoints() const;
 
 	//get the number of cameras
-	size_t GetNumCameras() const{
-		return mNumCameras;
-	}
+	size_t GetNumCameras() const;
+	
 
 	//clear all the data
-	void  ClearData(){
-		mAll_pic_cameras.ClearPicsCameras();
-		mFeature_infos.clear();
-		mNumbPoints = 0;
-		mNumCameras = 0;
-	}
+	void  ClearData();
 
 	//parse the bundler file
 	//input parameter: the file name of the output file(bundler.out) and
@@ -183,24 +173,17 @@ public:
 	//load the .key info  
 	bool LoadCameraInfo();
 
+	//save the built information
+	bool SaveFeature3DInfro(const std::string&s) const;
+	bool LoadFeature3DInfro(const std::string&s);
+
 	//return the 3d point feature info
-	std::vector< FEATURE_3D_INFO >& GetFeature3DInfo()
-	{
-		return mFeature_infos;
-	}
-	const std::vector< FEATURE_3D_INFO >& GetFeature3DInfo() const
-	{
-		return mFeature_infos;
-	}
+	std::vector< FEATURE_3D_INFO >& GetFeature3DInfo();
+	const std::vector< FEATURE_3D_INFO >& GetFeature3DInfo() const;
+
 	//return the pictures and cameras
-	ALL_PICTURES& GetAllPicturesAndCameras()
-	{
-		return mAll_pic_cameras;
-	}
-	const ALL_PICTURES& GetAllPicturesAndCameras()const
-	{
-		return mAll_pic_cameras;
-	}
+	ALL_PICTURES& GetAllPicturesAndCameras();
+	const ALL_PICTURES& GetAllPicturesAndCameras()const;
 
 	//after load original bundler file, mark the query image
 	void FindQueryPicture(const std::string& s);

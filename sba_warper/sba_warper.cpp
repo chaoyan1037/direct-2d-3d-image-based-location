@@ -4,8 +4,9 @@
 #include "sba.h"
 
 #include "sba_warper.h"
-
-using std::cout;
+#include "global.h"
+using global::cout;
+//using std::cout;
 using std::endl;
 
 /* unit quaternion from vector part */
@@ -707,16 +708,16 @@ bool SbaMotionOnly(sba_warper_data& sba)
 
 	std::ofstream os("sba_warper_debug1.txt", std::ios::out | std::ios::trunc);
 	if (!os){
-		std::cout << "sba_warper_debug1.txt file open fail." << std::endl;
+		global::cout << "sba_warper_debug1.txt file open fail." << std::endl;
 	}
 	globs.print(os);
 	os.close();
 	
-	cout << "before ba camara_para: ";
+	global::cout << "before ba camara_para: ";
 	for (int i = 6; i > 0; i--){
-		cout << sba.para_camera[ 5 + i] << " ";
+		global::cout << sba.para_camera[ 5 + i] << " ";
 	}
-	cout << endl;
+	global::cout << endl;
 
 	if (expert){
 		n = sba_mot_levmar_x(sba.n3dpoints, sba.ncamera, 0, sba.vmask, 

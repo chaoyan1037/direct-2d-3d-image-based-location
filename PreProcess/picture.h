@@ -44,7 +44,6 @@ struct SIFT_Descriptor
 		}
 	}
 	SIFT_Descriptor(){
-		legth = 128;
 		ptrDesc = nullptr;
 	}
 	~SIFT_Descriptor(){
@@ -109,7 +108,7 @@ public:
 	//PICTURE& operator=(const PICTURE &pic);
 
 	//load descriptor from the .key file
-	bool LoadKeyPointAndDes(const std::string& des_filename, bool bCenter_image);
+	bool LoadKeyPointAndDes(const std::string& des_filename, bool bHave_image_size=false);
 	
 	//set size
 	void SetImageSize(const int height, const int width);
