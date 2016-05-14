@@ -82,7 +82,7 @@ bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bHave_ima
 		infile >> sift_keypt.y >> sift_keypt.x 
 			>> sift_keypt.scale >> sift_keypt.orientation;
 
-		if (bHave_image_size){
+		/*if (bHave_image_size){
 			assert(mImageHeight>0 && mImgaeWidth > 0);
 			//origin: right_bottom, x-axis points left, y-axis points up
 			sift_keypt.x = mImgaeWidth - 1.0 - sift_keypt.x;
@@ -94,7 +94,7 @@ bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bHave_ima
 
 			//origin: left_bottom, x-axis points right, y-axis points up
 			//sift_keypt.y = mImageHeight - 1.0 - sift_keypt.y;
-		}
+		}*/
 				
 		//directly operate on the desc
 		//do not use temp variable and then push_back it into the vector
@@ -208,7 +208,7 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 			exif_reader::close_exif();
 		}
 	}
-	
+
 #pragma omp parallel for
 	for (int i = 0; i < pic_keyfilename.size(); i++)
 	{
@@ -221,6 +221,7 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 	global::cout << "load picture keys time: " << timer.GetElapsedTimeAsString() << endl;
 	return 1;
 }
+
 
 //if it is for query image, make flag true
 void ALL_PICTURES::SetQueryFlag(const bool flag)

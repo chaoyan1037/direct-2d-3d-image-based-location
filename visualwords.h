@@ -83,6 +83,10 @@ struct  LOCATE_RESULT
 	cv::Matx33d	K; 
 	cv::Matx33d	rotation;
 	cv::Vec3d	translation;
+
+	//feature 3d point correspondence
+	//int: the index of feature; int: the index of 3d point
+	std::vector< std::pair<size_t, size_t> > mFeature_3d_point_correspondence;
 };
 
 class VISUALWORDS_3DPOINT_HANDLER
@@ -91,10 +95,10 @@ class VISUALWORDS_3DPOINT_HANDLER
 private:
 //public:
 	//find 2d-3d corresponding in Function LocateSinglePicture()
-	bool FindCorrespondence(const PICTURE& picture);
+	bool FindCorrespondence(const size_t loca_res_index, const PICTURE& picture);
 
 	//Do query for a single picture
-	bool LocateSinglePicture(const PICTURE& picture, LOCATE_RESULT& result);
+	bool LocateSinglePicture(const size_t loca_res_index, const PICTURE& picture);
 
 	//build the visual words's index of 3d point 
 	bool BuildIndex3DPoints();
@@ -109,26 +113,14 @@ private:
 
 	//save the localization result
 	//0  no, 1: RT, 2 RTK
-	void SaveLocalizationResult(const std::string& s, const int iReportRTK = 0) const;
+	void SaveLocalizationResult(const std::string& s, 
+		const ALL_PICTURES& pic_cam_query, const int iReportRTK = 0) const;
 
 	//ratio test threshold to accept a 3d point as match
 	//i.e. find two two possible 3d points by compare with 
 	//its descriptors and find the most closest descriptor 
 	//as the represent of this 3d point. then do ratio test
 	float  mFeature_3d_point_correspondence_ratio_test_thres;
-
-	//whether do ratio test when find feature's visual word?
-	//in general, it is unnecessary since we just find the nearest one.
-	bool mFeature_visual_word_correspondence_ratio_test;
-	//if do ratio test, the ratio test threshold
-	float mFeature_visual_word_correspondence_ratio_test_thres;
-
-	//feature mask 1:there is 3d point correspondence  
-	std::vector< bool > mFeature_3d_point_correspondence_mask;
-
-	//feature 3d point correspondence
-	//int: the index of feature; int: the index of 3d point
-	std::vector< std::pair<int, int> > mFeature_3d_point_correspondence;
 
 	//threshold: the max number of matched feature and 3d point
 	//when reach this threshold then stop to calculate camera pose
@@ -137,6 +129,11 @@ private:
 	//threshold: the minimal number of matched correspondence
 	//if there are not enough 2d-3d correspondence, localize fail.
 	int mMinNumberCorrespondence;
+
+	//the method to represent the 3d point
+	//0: integer mean per visual words
+	//1: use all descriptors
+	int	mPoint3D_method;
 
 public:
 
@@ -152,19 +149,12 @@ public:
 	//locate all query images, call private LocateSinglePicture()
 	void LocatePictures(const ALL_PICTURES& pic_query);
 
-	//std::set< std::pair<int, int>, ViewListIsShort> mViewListSet;
-	//self define compare function, compare which view list is shorter
-	static struct  compareFunc
-	{
-		bool operator()(const std::pair<int, int> & p1, const std::pair<int, int> & p2) const
-		{
-			return p1.second < p2.second;
-		}
-	};
-
-	//3d point each visual words contain
-	//pair int:the id of 3d point, int: the length of the view list of this 3d point
-	std::vector<std::set<std::pair<int, int>, compareFunc>> mVisualwords_index_3d;
+	//3d point each visual words contained
+	//size is the num of visual words
+	//pair int:the id of 3d point, int: the index of feat in mAll_descriptor
+	std::vector< std::set< std::pair<size_t, size_t> > > mVisualwords_index_3d;
+	std::vector< POINT3D >			mPoint3D;
+	std::vector< SIFT_Descriptor >	mAll_descriptor;
 
 	//PARSE_BUNDLER contain database image, used to init the 3d point
 	PARSE_BUNDLER					mParse_bundler;

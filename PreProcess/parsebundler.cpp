@@ -163,6 +163,7 @@ bool PARSE_BUNDLER::LoadCameraInfo()
 			auto & view = mFeature_infos[i].mView_list[j];
 			auto & keypoint_vec = picture[mFeature_infos[i].mView_list[j].camera].GetFeaturePoint();
 
+			//use the bundler x, y
 			//do not use SIFT x, y coordinates, of which the origin is the left-up corner
 			////use the bundler x, y coordinates, of which the origin is the center of image
 			view.scale			= keypoint_vec[view.key].scale;
@@ -246,8 +247,11 @@ void PARSE_BUNDLER::WriteQueryBundler(const std::string& s) const
 
 //save the built information so next time directly load the file
 //format::
-//#3d points
-//each line contain all descriptor of one 3d points
+//#cameras  #3d points
+//for each 3d points, contain the full information
+//3dpoint(x, y, z, r g b)  
+//#view  each view(camera key x, y, scale, orientation)
+//also all descriptor of one 3d points 
 bool PARSE_BUNDLER::SaveFeature3DInfro(const std::string&s) const
 {
 	if (mNumbPoints != mFeature_infos.size()){
@@ -257,21 +261,31 @@ bool PARSE_BUNDLER::SaveFeature3DInfro(const std::string&s) const
 
 	std::ofstream os(s, std::ios::trunc|std::ios::out);
 	if (!os.is_open()){
-		global::cout << "open parsed_bundler.txt fail when save." << endl;
+		global::cout << "open parsed_bundler fail when save." << endl;
 		return 0;
 	}
 
-	os << mNumbPoints << endl;
+	os << mNumCameras<<" "<< mNumbPoints << endl;
 	size_t num_desc = 0;
 	//each 3d points a line
 	for (auto& feat_3d_info : mFeature_infos){
-		//num_desc = feat_3d_info.mDescriptor.size();
+		os << feat_3d_info.mPoint.x << " " << feat_3d_info.mPoint.y << " " << feat_3d_info.mPoint.z << " ";
+		//os << feat_3d_info.mPoint.r << " " << feat_3d_info.mPoint.g << " " << feat_3d_info.mPoint.b << " ";
+		os << std::endl;
+		os << feat_3d_info.mView_list.size() << " ";
+		//save view
+		for (auto& view : feat_3d_info.mView_list){
+			os << view.camera << " " << view.key << " " << view.x << " "
+				<< view.y << " " << view.scale << " " << view.orientation << " ";
+		}
+		os << std::endl;
+		//save decriptor num_desc = feat_3d_info.mDescriptor.size();
 		for (auto& sift_desc : feat_3d_info.mDescriptor){
 			for (int i = 0; i < sift_desc.legth; i++){
 				os << int(sift_desc.ptrDesc[i]) << " ";
 			}
 		}
-		os << endl;
+		os << std::endl;
 	}
 
 	os.close();
@@ -280,38 +294,48 @@ bool PARSE_BUNDLER::SaveFeature3DInfro(const std::string&s) const
 
 bool PARSE_BUNDLER::LoadFeature3DInfro(const std::string&s)
 {
-	std::ifstream is(s, std::ios::in);
+	std::ifstream is(s, std::ios::_Nocreate);
 	if (!is.is_open()){
-		global::cout << "open parsed_bundler.txt fail when load." << endl;
+		global::cout << " no parsed_bundler file then reload." << endl;
 		return 0;
 	}
 
-	int num_points = 0;
-	is >> num_points;
-	if (num_points != mFeature_infos.size()){
-		global::cout << "PARSE_BUNDLER: mNumbPoints != mFeature_infos.size() when load." << endl;
-	}
+	is >> mNumCameras >> mNumbPoints;
+	global::cout << "load feat_3d_info, total num of points:" << mNumbPoints << endl;
+	
+	mFeature_infos.clear();
+	mFeature_infos.resize(mNumbPoints);
+	size_t view_list_len = 0;
 
-	int desc_temp = 0;
-	std::string line;
 	//each 3d points a line
-	for (auto& feat_3d_info : mFeature_infos){
-		feat_3d_info.mDescriptor.clear();
-		feat_3d_info.mDescriptor.resize(feat_3d_info.mView_list.size());
-		//num_desc = feat_3d_info.mDescriptor.size();
-		for (auto& sift_desc : feat_3d_info.mDescriptor){
+	for (size_t i = 0; i < mNumbPoints; i++){
+		auto& feat_3d_point = mFeature_infos[i].mPoint;
+		is >> feat_3d_point.x >> feat_3d_point.y >> feat_3d_point.z;
+		//is >> feat_3d_point.r >> feat_3d_point.g >> feat_3d_point.b;
+		view_list_len = 0;
+		is >> view_list_len;
+
+		//load view_list
+		mFeature_infos[i].mView_list.resize(view_list_len);
+		for (auto& view : mFeature_infos[i].mView_list){
+			is >> view.camera >> view.key >> view.x >> view.y 
+				>> view.scale >> view.orientation;
+		}
+
+		//load descriptor  num_desc = feat_3d_info.mDescriptor.size();
+		mFeature_infos[i].mDescriptor.resize(view_list_len);
+		for (int j = 0; j < view_list_len; j++){
+			auto& sift_desc = mFeature_infos[i].mDescriptor[j];
 			sift_desc.ptrDesc = new unsigned char[sift_desc.legth];
 			if (!sift_desc.ptrDesc){
-				global::cout << " new unsigned char fail. parsebundelr.cpp ;ine 306" << endl;
+				global::cout << "new unsigned char fail. parsebundler.cpp line 330" << endl;
+				j--;
+				continue;
 			}
+			int tmp=0;
 			for (int i = 0; i < sift_desc.legth; i++){
-				if(is >> desc_temp){
-					sift_desc.ptrDesc[i] = (unsigned char)desc_temp;
-				}
-				else {
-					global::cout << "copy desc from txt err." << endl;
-					return 0;
-				}
+				is >> tmp; 
+				sift_desc.ptrDesc[i] = unsigned char(tmp);
 			}
 		}
 	}

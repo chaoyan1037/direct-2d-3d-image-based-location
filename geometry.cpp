@@ -294,7 +294,11 @@ int Geometry::ComputePoseEPnP(){
 		//cout << " one RANSAC end: " << pid <<" "<< RANSACnum << std::endl;
 	}
 
-	//cout << " all RANSAC end" << std::endl;
+	if (inlier_num_best < 12){
+		global::cout << "epnp not enough inlier after RANSAC." << endl;
+		return 0;
+	}
+
 	std::vector<int> inlier_match_index_list;
 	std::vector<bool> bInlier_(match_num, 0);
 	int inlier_num_last = 0, inlier_num_cur = 0;
@@ -354,6 +358,11 @@ int Geometry::ComputePoseEPnP(){
 	}
 	//cout << "epnp inlier match num: " << inlier_num_last << std::endl;
 	//cout << "epnp reprojection error: " << err2 << std::endl;
+	if (inlier_num_last < 12){
+		global::cout << "epnp not enough inlier after epnp." << endl;
+		return 0;
+	}
+
 	return inlier_num_last;
 }
 
@@ -446,6 +455,11 @@ int Geometry::ComputePoseDLT(){
 		}
 	}
 
+	if (inlier_num_best < 12){
+		global::cout << "dlt not enough inlier after RANSAC." << endl;
+		return 0;
+	}
+
 	cv::Matx34d P;
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>> inlier_match_list;
 	std::vector<bool> bInlier_(match_num, 0);
@@ -489,8 +503,8 @@ int Geometry::ComputePoseDLT(){
 		binlier.swap(bInlier_);
 	}
 
-	global::cout << "inlier match num: " << inlier_num_last << std::endl;
-	if (inlier_num_last < 6){
+	global::cout << "dlt inlier match num: " << inlier_num_last << std::endl;
+	if (inlier_num_last < 12){
 		global::cout << "not enough inlier, no pose calculated." << std::endl;
 		return 0;
 	}
@@ -1178,4 +1192,104 @@ void Geometry::TestGeometry(){
 
 #endif
 
+}
+
+
+void Test(){
+
+	std::vector< std::vector<std::vector<double>>> point_matches;
+	std::vector< std::vector<double> > K;
+
+	point_matches.reserve(30);
+	K.reserve(30);
+
+	ifstream is("runtimefile - Copy.txt", std::ios::_Nocreate | std::ios::in);
+	if (!is.is_open()){
+		std::cout << " open file fail. " << "runtimefile - Copy.txt" << endl;
+		return;
+	}
+
+	std::string line;
+	int i = 0;
+	int num_match = 0;
+	while (getline(is, line)){
+		istringstream istr(line);
+		K.push_back(std::vector<double>(5));
+		istr >> K[i][0] >> K[i][1] >> K[i][2] >> K[i][3] >> K[i][4];
+		istr >> num_match;
+		point_matches.push_back(std::vector<std::vector<double>>(num_match, std::vector<double>(5)));
+		for (int j = 0; j < num_match; j++){
+			istr >> point_matches[i][j][0] >> point_matches[i][j][1] >> point_matches[i][j][2]
+				>> point_matches[i][j][3] >> point_matches[i][j][4];
+		}
+		i++;
+	}
+
+	cv::Matx33d R;
+	cv::Vec3d T;
+
+	Geometry geo;
+	auto& mat_2d_3d = geo.ReturnMatch_2d_3d();
+	mat_2d_3d.reserve(200);
+	for (int i = 0; i < point_matches.size(); i++)
+	{
+		mat_2d_3d.clear();
+		if (K[i][0]) //use epnp
+		{
+			for (int j = 0; j < point_matches[i].size(); j++)
+			{
+				mat_2d_3d.push_back(std::make_pair(
+					cv::Vec2d(point_matches[i][j][0], point_matches[i][j][1]),
+					cv::Vec3d(-point_matches[i][j][2], point_matches[i][j][3], -point_matches[i][j][4])));
+			}
+			cv::Matx33d Kmat;
+			Kmat = Kmat.zeros();
+			Kmat(0, 0) = K[i][1];
+			Kmat(1, 1) = K[i][2];
+			Kmat(0, 2) = K[i][3];
+			Kmat(1, 2) = K[i][4];
+			Kmat(2, 2) = 1.0;
+
+			geo.SetK(Kmat);
+			if (geo.ComputePoseEPnP()){
+				geo.GetRT(R, T);
+				//R(0, 1) = -R(0, 1); R(1, 0) = -R(1, 0);
+				//R(1, 2) = -R(1, 2); R(2, 1) = -R(2, 1);
+				//T[0] = -T[0]; T[2] = -T[2];
+				std::cout << "success! epnp compute pose for image " << i << std::endl;
+				std::cout << R << std::endl;
+				std::cout << T.t() << std::endl;
+			}
+			else{
+				std::cout << "fail! epnp compute pose for image " << i << std::endl;
+			}
+		}
+		else//dlt
+		{
+			for (int j = 0; j < point_matches[i].size(); j++)
+			{
+				mat_2d_3d.push_back(std::make_pair(
+					cv::Vec2d(point_matches[i][j][0], point_matches[i][j][1]),
+					cv::Vec3d(point_matches[i][j][2], point_matches[i][j][3], point_matches[i][j][4])));
+			}
+			if (geo.ComputePoseDLT()){
+				geo.GetRT(R, T);
+				//R(0, 0) = -R(0, 0); R(0, 1) = -R(0, 1);
+				//R(0, 2) = -R(0, 2); R(2, 0) = -R(2, 0);
+				//R(2, 1) = -R(2, 1); R(2, 2) = -R(2, 2);
+				//T[0] = -T[0]; T[2] = -T[2];
+				std::cout << "success! dlt compute pose for image " << i << std::endl;
+				std::cout << R << std::endl;
+				std::cout << T.t() << std::endl;
+				geo.GetK_est(R);
+				std::cout << "estimated K: " << std::endl;
+				std::cout << R << std::endl;
+			}
+			else{
+				std::cout << "fail! dlt compute pose for image " << i << std::endl;
+			}
+		}
+	}
+
+	is.close();
 }

@@ -73,7 +73,7 @@ struct VIEW
 	size_t camera;//the index of camera the feature was detected in
 	size_t key;//index of this feature in the corresponding .key file
 	
-	float x, y;//coordinates the center is the image center
+	float x, y;//bundler coordinate. the center is the image center
 	float scale;
 	float orientation;
 
@@ -170,7 +170,7 @@ public:
 	//the filename of the list of images(usually list.txt)
 	bool ParseBundlerFile();
 
-	//load the .key info  
+	//load the .key info, needed descriptors 
 	bool LoadCameraInfo();
 
 	//save the built information

@@ -136,5 +136,6 @@ private:
 	std::vector<bool> binlier;
 };
 
+void Test();
 
 #endif

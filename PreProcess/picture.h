@@ -168,10 +168,9 @@ public:
 	~ALL_PICTURES();
 
 	// load all picture keys from the list, clear if exist
-	// for query image, also load image size
 	bool LoadPicturesKeyFile();
 
-	//load the camera pose ground truth
+	// and load the camera pose ground truth
 	bool LoadCamerasPose(const std::string& s);
 
 

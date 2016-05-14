@@ -31,22 +31,23 @@ int main(int * argc, char** argv)
 #endif
 	//test geometry
 #if 0
-	Geometry geo;
-	geo.TestGeometry();
+	Test();
+	//Geometry geo;
+	//geo.TestGeometry();
 	return 1;
 #endif
 
-#if 1
+#if 0
 	/*	VISUALWORDS_3DPOINT_HANDLER(const std::string &bundle_path,
 		const std::string &list_txt,
 		const std::string &bundle_file)
 	*/
-	VISUALWORDS_3DPOINT_HANDLER vw_3d_point_handler("E:/statue/",
+	VISUALWORDS_3DPOINT_HANDLER vw_3d_point_handler("E:/statue",
 		"list.db.txt", "E:/statue/bundle/bundle.db.out");
 	vw_3d_point_handler.Init();
-
+	
 	//define query images:
-	ALL_PICTURES pic_query("E:/statue/", "list.query.txt");
+ 	ALL_PICTURES pic_query("E:/statue", "list.query.txt");
 	pic_query.SetQueryFlag(true);
 	pic_query.LoadPicturesKeyFile();
 
@@ -57,12 +58,12 @@ int main(int * argc, char** argv)
 
 #else
 
-	VISUALWORDS_3DPOINT_HANDLER vw_3d_point_handler("E:/Dubrovnik6K/",
+	VISUALWORDS_3DPOINT_HANDLER vw_3d_point_handler("E:/Dubrovnik6K",
 		"list.db.txt", "E:/Dubrovnik6K/bundle/bundle.db.out");
 	vw_3d_point_handler.Init();
 
 	//define query images:
-	ALL_PICTURES pic_query("E:/Dubrovnik6K/", "list.query.txt");
+	ALL_PICTURES pic_query("E:/Dubrovnik6K", "list.query.txt");
 	pic_query.SetQueryFlag(true);
 	pic_query.LoadPicturesKeyFile();
 
@@ -70,6 +71,7 @@ int main(int * argc, char** argv)
 	pic_query.LoadCamerasPose("E:/Dubrovnik6K/bundle/bundle.query.out");
 
 	vw_3d_point_handler.LocatePictures(pic_query);
+
 #endif
 
 	if (false == global::CloseRunningTimeFile()){

@@ -8,7 +8,7 @@
 /* define the global settings                                           */
 /************************************************************************/
 
-#define USE_STD_COUT
+//#define USE_STD_COUT
 
 namespace global{
 
