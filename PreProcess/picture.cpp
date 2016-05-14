@@ -275,8 +275,8 @@ bool ALL_PICTURES::LoadCamerasPose(const std::string& s)
 			>> mCameras[i].rotation(2, 1)
 			>> mCameras[i].rotation(2, 2);
 
-		instream >> mCameras[i].translation(0)
-			>> mCameras[i].translation(1)
+		instream >> mCameras[i].translation(0) 
+			>> mCameras[i].translation(1) 
 			>> mCameras[i].translation(2);
 		
 		mPictures[i].GetImageSize(mCameras[i].height, mCameras[i].width);

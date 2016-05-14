@@ -114,7 +114,7 @@ bool PARSE_BUNDLER::ParseBundlerFile()
 		instream >> mCameras[i].translation(0)
 			>> mCameras[i].translation(1)
 			>> mCameras[i].translation(2);
-		
+		//in bundler it is translation, we should convert it into 
 		//mCameras[i].id = i;
 	}
 	//return 1;

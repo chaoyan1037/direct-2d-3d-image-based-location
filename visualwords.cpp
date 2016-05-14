@@ -113,7 +113,7 @@ VISUALWORDS_3DPOINT_HANDLER::VISUALWORDS_3DPOINT_HANDLER(const std::string &bund
 	mPicCam_db.SetParameters(bundle_path, list_txt);
 	mParse_bundler.SetBundleFileName(bundle_file);
 
-	mMaxNumberCorrespondence = 120;
+	mMaxNumberCorrespondence = 100;
 	mMinNumberCorrespondence = 12;
 
 	//integer mean per visual words
@@ -470,7 +470,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const size_t loca_res_index
 		//Check whether closest distance is less than 0.7 of second.
 		if (min_distance_3d_point_index[0] >= 0 
 			&& 10 * 10 * min_distance_squared[0] < 7 * 7 * min_distance_squared[1]
-			&& min_distance_squared[0] <= 12800)
+			&& min_distance_squared[0] <= 51200)
 		{
 			//check if the found 3D is in the map corr_3D_to_2D
 			auto map_it_3D = corr_3D_to_2D.find(min_distance_3d_point_index[0]);
@@ -516,7 +516,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 	auto& result = mLocate_result[loca_res_index];
 	result.located_image = false;
 	//0: can not find enough 2d-3d correspondence
-	global::cout << "start find correspondence" << std::endl;
+	//global::cout << "start find correspondence" << std::endl;
 	if (0 == FindCorrespondence(loca_res_index, picture))
 	{
 		timer.Stop();
@@ -537,7 +537,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 
 
 	timer.ReStart();
-	global::cout << "geo " << std::endl;
+	//global::cout << "geo " << std::endl;
 	Geometry geo;
 	//geo.match_2d_3d
 	auto& mat_2d_3d = geo.ReturnMatch_2d_3d();
@@ -580,9 +580,8 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 		result.time_computepose = timer.GetElapsedTimeMilliSecond() - result.time_findcorresp;
 
 		if (0 == result.num_inlier_match){ return 0; }
-
-		geo.GetRT(result.rotation, result.translation);
-		
+		//here it is rotation and translation
+		geo.GetRT(result.rotation, result.center);
 	}
 	else{
 		global::cout << "dlt compute pose" << std::endl;
@@ -593,9 +592,9 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 		result.time_computepose = timer.GetElapsedTimeMilliSecond() - result.time_findcorresp;
 
 		if (0 == result.num_inlier_match){ return 0; }
-
-		geo.GetRT(result.rotation, result.translation);
-
+		//here it is rotation and translation
+		geo.GetRT(result.rotation, result.center);
+		
 		//only for DLT, get the estimated K
 		geo.GetK_est(result.K);
 	}
@@ -605,8 +604,10 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 	result.rotation(1, 0) = -result.rotation(1, 0);
 	result.rotation(1, 2) = -result.rotation(1, 2);
 	result.rotation(2, 1) = -result.rotation(2, 1);
-	result.translation[0] = -result.translation[0];
-	result.translation[2] = -result.translation[2];
+	result.center[0] = -result.center[0];
+	result.center[2] = -result.center[2];
+	//convert the translation into the real camera center
+	result.center = -result.rotation.t()*result.center;
 	result.located_image = true;	
 
 	return 1;
@@ -633,7 +634,7 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 	for (int i = 0; i < pic_query.size(); i++)
 	{
 		int h = 0, w = 0;
-		global::cout << endl <<"start locating image " << i << endl;
+		//global::cout << endl <<"start locating image " << i << endl;
 		if (pic_query_focal[i] > 0){
 			mLocate_result[i].have_intrinsics = true;
 			mLocate_result[i].K(0, 0) = pic_query_focal[i];
@@ -663,7 +664,7 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 		//calculate the rotation err
 		cv::Matx33d R_diff = (cam_query_true[i].rotation * mLocate_result[i].rotation.t());
 		RotationToQuaterion(R_diff, quat);
-		global::cout << "after rotation to quat " << endl;
+		//global::cout << "after rotation to quat " << endl;
 
 		double cos_half_phi, sin_half_phi;
 		cos_half_phi = quat[0];
@@ -671,13 +672,14 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 
 		//atan2(sin_half_phi, cos_half_phi) is phi/2, so it is 2 * 180 /PI
 		mLocate_result[i].error_rotation = atan2(sin_half_phi, cos_half_phi) * 360.0 / PI;
-		global::cout << "after atan2 " << endl;
+		//global::cout << "after atan2 " << endl;
 
-		cv::Vec3d err_trans = cam_query_true[i].translation - mLocate_result[i].translation;
-		mLocate_result[i].error_translation = std::sqrt(err_trans[0] * err_trans[0] 
-			+ err_trans[1] * err_trans[1] + err_trans[2] * err_trans[2]);
+		cv::Vec3d cam_center_true = -cam_query_true[i].rotation.t()*cam_query_true[i].translation;
+		cv::Vec3d err_center = cam_center_true - mLocate_result[i].center;
+		mLocate_result[i].error_center = std::sqrt(err_center[0] * err_center[0]
+			+ err_center[1] * err_center[1] + err_center[2] * err_center[2]);
 
-		global::cout << "end locating image " << i << endl;
+		//global::cout << "end locating image " << i << endl;
 	}
 
 	global::cout << "start write result " << endl;
@@ -703,32 +705,110 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 	}
 
 	auto& cam_true = pic_cam_query.GetAllCameras();
-	
 	os << mNum_totalimage << " " << mNum_locatedimage << endl;
-	for (size_t i = 0; i < mLocate_result.size(); i++)
+	
+	std::vector<size_t> putative_mat;
+	putative_mat.reserve(mLocate_result.size());
+	std::vector<size_t> inlier_mat;
+	inlier_mat.reserve(mLocate_result.size());
+	std::vector<double> t_corres;
+	t_corres.reserve(mLocate_result.size());
+	std::vector<double> t_ransac;
+	t_ransac.reserve(mLocate_result.size());
+	std::vector<double> err_rot;
+	err_rot.reserve(mLocate_result.size());
+	std::vector<double> err_pos;
+	err_pos.reserve(mLocate_result.size());
+
+	double sum_putative_mat(0.0), sum_inlier_mat(0.0);
+	double sum_t_corres(0.0), sum_t_ransac(0.0);
+	double sum_err_rot(0.0), sum_err_pos(0.0);
+
+	// do some statistics
+	for (size_t i = 0; i < mNum_totalimage; i++)
 	{
 		auto & res = mLocate_result[i];
-		os	<< "Y: " << res.located_image << " "
-			<< "f: " << res.have_intrinsics << " "
-			<< "match: "<<res.num_putative_match << " "
-			<< "inlier_mat: "<<res.num_inlier_match << " "
-			<< "t_corres: "<<res.time_findcorresp << " "
-			<< "t_compute: "<<res.time_computepose << " "
-			<< "err_r: "<<res.error_rotation << " "
-			<< "err_c: "<<res.error_translation << " "
-			<< std::endl;
+		if (!res.located_image) continue;
+
+		putative_mat.push_back(res.num_putative_match);
+		inlier_mat.push_back(res.num_inlier_match);
+		t_corres.push_back(res.time_findcorresp);
+		t_ransac.push_back(res.time_computepose);
+		err_rot.push_back(res.error_rotation);
+		err_pos.push_back(res.error_center);
+		
+		sum_putative_mat += putative_mat[i];
+		sum_inlier_mat += inlier_mat[i];
+		sum_t_corres += t_corres[i];
+		sum_t_ransac += t_ransac[i];
+		sum_err_rot += err_rot[i];
+		sum_err_pos += err_pos[i];
+	}
+
+	os	<< "mean" << std::endl;
+	os	<< "putaive_mat: " << sum_putative_mat / putative_mat.size() << " "
+		<< "inlier_mat: " << sum_inlier_mat / inlier_mat.size() << " "
+		<< "time_corres: " << sum_t_corres / t_corres.size() << " "
+		<< "time_ransac: " << sum_t_ransac / t_ransac.size() << " "
+		<< "err_rotation: " << sum_err_rot / err_rot.size() << " "
+		<< "err_position: " << sum_err_pos / err_pos.size() << std::endl;
+
+	putative_mat.shrink_to_fit();
+	std::sort(putative_mat.begin(), putative_mat.end());
+	inlier_mat.shrink_to_fit();
+	std::sort(inlier_mat.begin(), inlier_mat.end());
+	t_corres.shrink_to_fit();
+	std::sort(t_corres.begin(), t_corres.end());
+	t_ransac.shrink_to_fit();
+	std::sort(t_ransac.begin(), t_ransac.end());
+	err_rot.shrink_to_fit();
+	std::sort(err_rot.begin(), err_rot.end());
+	err_pos.shrink_to_fit();
+	std::sort(err_pos.begin(), err_pos.end());
+
+	os	<< "median" << std::endl;
+	os	<< "putaive_mat: " << putative_mat[putative_mat.size() >> 1] << " "
+		<< "inlier_mat: " << inlier_mat[inlier_mat.size() >> 1] << " "
+		<< "time_corres: " << t_corres[t_corres.size() >> 1] << " "
+		<< "time_ransac: " << t_ransac[t_ransac.size() >> 1] << " "
+		<< "err_rotation: " << err_rot[err_rot.size() >> 1] << " "
+		<< "err_position: " << err_pos[err_pos.size() >> 1] << std::endl;
+
+	os	<< "1st quartile" << std::endl;
+	os	<< "putaive_mat: " << putative_mat[putative_mat.size() >> 2] << " "
+		<< "inlier_mat: " << inlier_mat[inlier_mat.size() >> 2] << " "
+		<< "time_corres: " << t_corres[t_corres.size() >> 2] << " "
+		<< "time_ransac: " << t_ransac[t_ransac.size() >> 2] << " "
+		<< "err_rotation: " << err_rot[err_rot.size() >> 2] << " "
+		<< "err_position: " << err_pos[err_pos.size() >> 2] << std::endl;
+
+	os	<< "3st quartile" << std::endl;
+	os	<< "putaive_mat: " << putative_mat[int(0.75*putative_mat.size())] << " "
+		<< "inlier_mat: " << inlier_mat[int(0.75*inlier_mat.size())] << " "
+		<< "time_corres: " << t_corres[int(0.75*t_corres.size())] << " "
+		<< "time_ransac: " << t_ransac[int(0.75*t_ransac.size())] << " "
+		<< "err_rotation: " << err_rot[int(0.75*err_rot.size())] << " "
+		<< "err_position: " << err_pos[int(0.75*err_pos.size())] << std::endl;
+	
+	os	<< std::endl;
+
+	for (size_t i = 0; i < mNum_totalimage; i++)
+	{
+		auto & res = mLocate_result[i];
 
 		if (iReportRT){
 			for (int j = 0; j < 3; j++){
-				os	<< res.rotation(j, 0) << " "
+				os << res.rotation(j, 0) << " "
 					<< res.rotation(j, 1) << " "
 					<< res.rotation(j, 2) << " "
-					<< res.translation(j) << "   | truth   ";
+					<< res.center[j] << "   | truth   ";
 				
-				os	<< cam_true[i].rotation(j, 0) << " "
+				os << cam_true[i].rotation(j, 0) << " "
 					<< cam_true[i].rotation(j, 1) << " "
-					<< cam_true[i].rotation(j, 2) << " "
-					<< cam_true[i].translation(j) << std::endl;
+					<< cam_true[i].rotation(j, 2) << " ";
+				
+				cv::Vec3d cam_center_true = -cam_true[i].rotation.t()*cam_true[i].translation;
+				os << cam_center_true[j] << std::endl;
 			}
 		}
 
@@ -740,6 +820,17 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 			}
 			os << std::endl;
 		}
+
+		os << "Y: " << res.located_image << " "
+			<< "f: " << res.have_intrinsics << " "
+			<< "match: " << res.num_putative_match << " "
+			<< "inlier_mat: " << res.num_inlier_match << " "
+			<< "t_corres: " << res.time_findcorresp << " "
+			<< "t_ransac: " << res.time_computepose << " "
+			<< "err_r: " << res.error_rotation << " "
+			<< "err_c: " << res.error_center << " "
+			<< std::endl;
+
 		os << std::endl;
 	}
 

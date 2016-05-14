@@ -60,11 +60,11 @@ struct  LOCATE_RESULT
 	LOCATE_RESULT() :have_intrinsics(0),located_image(0),
 		num_putative_match(0),num_inlier_match(0), 
 		time_findcorresp(0.0), time_computepose(0.0),
-		error_rotation(0.0), error_translation(0.0)
+		error_rotation(0.0), error_center(0.0)
 	{
 		K = K.zeros();
 		rotation = rotation.zeros();
-		translation[0] = 0.0; translation[1] = 0.0; translation[2] = 0.0;
+		center[0] = 0.0; center[1] = 0.0; center[2] = 0.0;
 	}
 
 	bool	have_intrinsics;
@@ -77,12 +77,12 @@ struct  LOCATE_RESULT
 	double	time_computepose;
 
 	double	error_rotation;
-	double	error_translation;
+	double	error_center;
 
 	// if have intrinsics, then use epnp, else use DLT and estimate K
 	cv::Matx33d	K; 
 	cv::Matx33d	rotation;
-	cv::Vec3d	translation;
+	cv::Vec3d	center;
 
 	//feature 3d point correspondence
 	//int: the index of feature; int: the index of 3d point
