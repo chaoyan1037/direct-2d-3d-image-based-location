@@ -89,14 +89,14 @@ public:
 	void GetK_est(cv::Matx33d& K) const;
 
 
-	//for epen set K
+	//for epnp set K
 	void SetIntrinsicParameter(float f, int u, int v);
 	void SetK(const cv::Matx33d& Ki);
 
 	//get estimated R and T
-
 	void GetRT(cv::Matx33d& R_est, cv::Vec3d& T_est) const;
-
+	void GetRC(cv::Matx33d& R_est, cv::Vec3d& C_est) const;
+	
 	//get the match_2d_3d
 	const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ReturnMatch_2d_3d() const;
 	std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& ReturnMatch_2d_3d();
@@ -116,6 +116,9 @@ private:
 
 	//estimated T
 	cv::Vec3d T;
+
+	//estimated camera center
+	cv::Vec3d position;
 
 	//the estimated K for DLT
 	cv::Matx33d K_estimated;

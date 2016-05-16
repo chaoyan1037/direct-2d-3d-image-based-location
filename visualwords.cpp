@@ -526,16 +526,6 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 	timer.Stop();
 	result.time_findcorresp = timer.GetElapsedTimeMilliSecond();
 
-
-	static int test_cnt = 20;
-	if (test_cnt < 20){
-		global::cout << result.have_intrinsics << " "
-			<< result.K(0, 0) << " " << result.K(1, 1) << " "
-			<< result.K(0, 2) << " " << result.K(1, 2) << " "
-			<< result.mFeature_3d_point_correspondence.size();
-	}
-
-
 	timer.ReStart();
 	//global::cout << "geo " << std::endl;
 	Geometry geo;
@@ -554,14 +544,8 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 		auto& pt_2d = pic_point_2d[pa.first];
 		auto& pt_3d = mPoint3D[pa.second];
 		mat_2d_3d.push_back(std::make_pair(
-			cv::Vec2d(width - pt_2d.x, height - pt_2d.y),
-			cv::Vec3d(-pt_3d.x, pt_3d.y, -pt_3d.z)));
-	
-		//for debug convenience, save ten query images
-		if (test_cnt < 20){
-			global::cout << pt_2d.x << " " << pt_2d.y << " "
-				<< pt_3d.x << " " << pt_3d.y << " " << pt_3d.z << " ";
-		}
+			cv::Vec2d(pt_2d.x, height -1.0 - pt_2d.y),
+			cv::Vec3d(-pt_3d.x, -pt_3d.y, -pt_3d.z)));
 	}
 
 	//if (test_cnt < 20) test_cnt++; global::cout << endl;
@@ -600,12 +584,13 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 	}
 
 	//transform back
-	result.rotation(0, 1) = -result.rotation(0, 1);
+	/*result.rotation(0, 1) = -result.rotation(0, 1);
 	result.rotation(1, 0) = -result.rotation(1, 0);
 	result.rotation(1, 2) = -result.rotation(1, 2);
 	result.rotation(2, 1) = -result.rotation(2, 1);
 	result.center[0] = -result.center[0];
-	result.center[2] = -result.center[2];
+	result.center[2] = -result.center[2];*/
+
 	//convert the translation into the real camera center
 	result.center = -result.rotation.t()*result.center;
 	result.located_image = true;	
@@ -615,7 +600,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 
 void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_query)
 {
-	Timer timer, timer_sigle;
+	Timer timer;
 	timer.Start();
 
 	auto & pic_query		= pic_cam_query.GetAllPictures();
@@ -630,22 +615,21 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 	mNum_locatedimage = 0;
 	mLocate_result.resize(mNum_totalimage);
 
-	//TODO: use openMP 
 	for (int i = 0; i < pic_query.size(); i++)
 	{
 		int h = 0, w = 0;
 		//global::cout << endl <<"start locating image " << i << endl;
 		if (pic_query_focal[i] > 0){
 			mLocate_result[i].have_intrinsics = true;
-			mLocate_result[i].K(0, 0) = pic_query_focal[i];
-			mLocate_result[i].K(1, 1) = pic_query_focal[i];
+			mLocate_result[i].K(0, 0) = -pic_query_focal[i];
+			mLocate_result[i].K(1, 1) = -pic_query_focal[i];
 			
 			pic_query[i].GetImageSize(h, w);
 			mLocate_result[i].K(0, 2) = (w - 1) >> 1;
 			mLocate_result[i].K(1, 2) = (h - 1) >> 1;
 			mLocate_result[i].K(2, 2) = 1.0;
 		}
-
+		Timer timer_sigle;
 		timer_sigle.Start();
 		LocateSinglePicture(i, pic_query[i]);
 		timer_sigle.Stop();
@@ -670,12 +654,14 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 		cos_half_phi = quat[0];
 		sin_half_phi = std::sqrt(quat[1] * quat[1] + quat[2] * quat[2] + quat[3] * quat[3]);
 
+		using std::min;
 		//atan2(sin_half_phi, cos_half_phi) is phi/2, so it is 2 * 180 /PI
 		mLocate_result[i].error_rotation = atan2(sin_half_phi, cos_half_phi) * 360.0 / PI;
+		mLocate_result[i].error_rotation = min(mLocate_result[i].error_rotation, 180 - mLocate_result[i].error_rotation);
 		//global::cout << "after atan2 " << endl;
 
 		cv::Vec3d cam_center_true = -cam_query_true[i].rotation.t()*cam_query_true[i].translation;
-		cv::Vec3d err_center = cam_center_true - mLocate_result[i].center;
+		cv::Vec3d err_center = cam_center_true + mLocate_result[i].center;
 		mLocate_result[i].error_center = std::sqrt(err_center[0] * err_center[0]
 			+ err_center[1] * err_center[1] + err_center[2] * err_center[2]);
 
@@ -684,7 +670,7 @@ void VISUALWORDS_3DPOINT_HANDLER::LocatePictures(const ALL_PICTURES& pic_cam_que
 
 	global::cout << "start write result " << endl;
 	//save the result into a txt file
-	SaveLocalizationResult("result.txt", pic_cam_query, 2);
+	SaveLocalizationResult("result.txt", pic_cam_query, 1);
 
 	timer.Stop();
 	global::cout << "locate all images time: " << timer.GetElapsedTimeAsString() << std::endl;
@@ -707,20 +693,15 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 	auto& cam_true = pic_cam_query.GetAllCameras();
 	os << mNum_totalimage << " " << mNum_locatedimage << endl;
 	
-	std::vector<size_t> putative_mat;
-	putative_mat.reserve(mLocate_result.size());
-	std::vector<size_t> inlier_mat;
-	inlier_mat.reserve(mLocate_result.size());
-	std::vector<double> t_corres;
-	t_corres.reserve(mLocate_result.size());
-	std::vector<double> t_ransac;
-	t_ransac.reserve(mLocate_result.size());
-	std::vector<double> err_rot;
-	err_rot.reserve(mLocate_result.size());
-	std::vector<double> err_pos;
-	err_pos.reserve(mLocate_result.size());
+	std::vector<size_t> putative_mat;	putative_mat.reserve(mLocate_result.size());
+	std::vector<size_t> inlier_mat;		inlier_mat.reserve(mLocate_result.size());
+	std::vector<double> t_corres;		t_corres.reserve(mLocate_result.size());
+	std::vector<double> t_ransac;		t_ransac.reserve(mLocate_result.size());
+	std::vector<double> err_rot;		err_rot.reserve(mLocate_result.size());
+	std::vector<double> err_pos;		err_pos.reserve(mLocate_result.size());
 
-	double sum_putative_mat(0.0), sum_inlier_mat(0.0);
+#if 1
+	size_t sum_putative_mat(0.0), sum_inlier_mat(0.0);
 	double sum_t_corres(0.0), sum_t_ransac(0.0);
 	double sum_err_rot(0.0), sum_err_pos(0.0);
 
@@ -765,7 +746,7 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 	std::sort(err_rot.begin(), err_rot.end());
 	err_pos.shrink_to_fit();
 	std::sort(err_pos.begin(), err_pos.end());
-
+	
 	os	<< "median" << std::endl;
 	os	<< "putaive_mat: " << putative_mat[putative_mat.size() >> 1] << " "
 		<< "inlier_mat: " << inlier_mat[inlier_mat.size() >> 1] << " "
@@ -783,14 +764,15 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 		<< "err_position: " << err_pos[err_pos.size() >> 2] << std::endl;
 
 	os	<< "3st quartile" << std::endl;
-	os	<< "putaive_mat: " << putative_mat[int(0.75*putative_mat.size())] << " "
-		<< "inlier_mat: " << inlier_mat[int(0.75*inlier_mat.size())] << " "
-		<< "time_corres: " << t_corres[int(0.75*t_corres.size())] << " "
-		<< "time_ransac: " << t_ransac[int(0.75*t_ransac.size())] << " "
-		<< "err_rotation: " << err_rot[int(0.75*err_rot.size())] << " "
-		<< "err_position: " << err_pos[int(0.75*err_pos.size())] << std::endl;
+	os	<< "putaive_mat: " << putative_mat[size_t(0.75*putative_mat.size())] << " "
+		<< "inlier_mat: " << inlier_mat[size_t(0.75*inlier_mat.size())] << " "
+		<< "time_corres: " << t_corres[size_t(0.75*t_corres.size())] << " "
+		<< "time_ransac: " << t_ransac[size_t(0.75*t_ransac.size())] << " "
+		<< "err_rotation: " << err_rot[size_t(0.75*err_rot.size())] << " "
+		<< "err_position: " << err_pos[size_t(0.75*err_pos.size())] << std::endl;
 	
 	os	<< std::endl;
+#endif
 
 	for (size_t i = 0; i < mNum_totalimage; i++)
 	{
@@ -801,14 +783,14 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 				os << res.rotation(j, 0) << " "
 					<< res.rotation(j, 1) << " "
 					<< res.rotation(j, 2) << " "
-					<< res.center[j] << "   | truth   ";
+					<< res.center[j] << "      |      ";
 				
 				os << cam_true[i].rotation(j, 0) << " "
 					<< cam_true[i].rotation(j, 1) << " "
 					<< cam_true[i].rotation(j, 2) << " ";
-				
-				cv::Vec3d cam_center_true = -cam_true[i].rotation.t()*cam_true[i].translation;
-				os << cam_center_true[j] << std::endl;
+
+					cv::Vec3d cam_center_true = -cam_true[i].rotation.t()*cam_true[i].translation;
+					os << cam_center_true[j] << std::endl;
 			}
 		}
 
@@ -821,7 +803,9 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 			os << std::endl;
 		}
 
-		os << "Y: " << res.located_image << " "
+		os << "err_r: " << res.error_rotation << " "
+			<< "err_c: " << res.error_center << " " << endl;
+		/*os << "Y: " << res.located_image << " "
 			<< "f: " << res.have_intrinsics << " "
 			<< "match: " << res.num_putative_match << " "
 			<< "inlier_mat: " << res.num_inlier_match << " "
@@ -829,7 +813,7 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 			<< "t_ransac: " << res.time_computepose << " "
 			<< "err_r: " << res.error_rotation << " "
 			<< "err_c: " << res.error_center << " "
-			<< std::endl;
+			<< std::endl;*/
 
 		os << std::endl;
 	}

@@ -142,6 +142,10 @@ void Geometry::GetRT(cv::Matx33d& R_est, cv::Vec3d& T_est) const
 {
 	R_est = R; T_est = T;
 }
+void Geometry::GetRC(cv::Matx33d& R_est, cv::Vec3d& C_est) const
+{
+	R_est = R; C_est = position;
+}
 
 const std::vector<std::pair<cv::Vec2d, cv::Vec3d>>& Geometry::ReturnMatch_2d_3d() const
 {
@@ -363,6 +367,9 @@ int Geometry::ComputePoseEPnP(){
 		return 0;
 	}
 
+	//calculate the center of the camera
+	position = -R.t()*T;
+
 	return inlier_num_last;
 }
 
@@ -508,6 +515,20 @@ int Geometry::ComputePoseDLT(){
 		global::cout << "not enough inlier, no pose calculated." << std::endl;
 		return 0;
 	}
+	
+	/************************************************************************/
+	cv::Matx33d		M;
+	cv::Vec3d		P4;
+	for (int i = 0; i < 3; i++){
+		for (int j = 0; j < 3; j++)
+		{
+			M(i, j) = P(i, j);
+		}
+		P4(i) = P(i, 3);
+	}
+	position = -M.inv()*P4;
+
+	/************************************************************************/
 
 	P_inlier = P;
 	cv::Matx33d KR, K_RQ, R_RQ;

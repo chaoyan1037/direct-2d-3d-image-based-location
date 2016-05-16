@@ -221,25 +221,20 @@ void PARSE_BUNDLER::WriteQueryBundler(const std::string& s) const
 
 	for (size_t i = 0; i < mPic_query_mask.size(); i++){
 		if (1 == mPic_query_mask[i]){
-			os  << mCameras[i].focal_length 
-				<< mCameras[i].k1 << mCameras[i].k2 
-				<< endl;
-			os  << mCameras[i].rotation(0, 0)
-				<< mCameras[i].rotation(0, 1)
-				<< mCameras[i].rotation(0, 2) 
-				<< endl;
-			os  << mCameras[i].rotation(1, 0)
-				<< mCameras[i].rotation(1, 1)
-				<< mCameras[i].rotation(1, 2) 
-				<< endl;
-			os  << mCameras[i].rotation(2, 0)
-				<< mCameras[i].rotation(2, 1)
-				<< mCameras[i].rotation(2, 2) 
-				<< endl;
-			os  << mCameras[i].translation(0)
-				<< mCameras[i].translation(1)
-				<< mCameras[i].translation(2) 
-				<< endl;
+			os << mCameras[i].focal_length << " "
+				<< mCameras[i].k1 << " " << mCameras[i].k2 << endl;
+			os << mCameras[i].rotation(0, 0) << " "
+				<< mCameras[i].rotation(0, 1) << " "
+				<< mCameras[i].rotation(0, 2) << endl;
+			os << mCameras[i].rotation(1, 0) << " "
+				<< mCameras[i].rotation(1, 1) << " "
+				<< mCameras[i].rotation(1, 2) << endl;
+			os << mCameras[i].rotation(2, 0) << " "
+				<< mCameras[i].rotation(2, 1) << " "
+				<< mCameras[i].rotation(2, 2) << endl;
+			os << mCameras[i].translation(0) << " "
+				<< mCameras[i].translation(1) << " "
+				<< mCameras[i].translation(2) << endl;
 		}
 	}
 	os.close();

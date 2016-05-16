@@ -103,7 +103,7 @@ bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bHave_ima
 
 		sift_desc.ptrDesc = new unsigned char[sift_desc.legth];
 		if (sift_desc.ptrDesc == nullptr || mDes_length != sift_desc.legth){
-			global::cout << "new error(picture.cpp, line 56)" << std::endl;
+			global::cout << "new error(picture.cpp, line 06)" << std::endl;
 			return 0;
 		}
 
