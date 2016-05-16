@@ -693,17 +693,17 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 	auto& cam_true = pic_cam_query.GetAllCameras();
 	os << mNum_totalimage << " " << mNum_locatedimage << endl;
 	
-	std::vector<size_t> putative_mat;	putative_mat.reserve(mLocate_result.size());
-	std::vector<size_t> inlier_mat;		inlier_mat.reserve(mLocate_result.size());
+	std::vector<unsigned int> putative_mat;		putative_mat.reserve(mLocate_result.size());
+	std::vector<unsigned int> inlier_mat;		inlier_mat.reserve(mLocate_result.size());
 	std::vector<double> t_corres;		t_corres.reserve(mLocate_result.size());
 	std::vector<double> t_ransac;		t_ransac.reserve(mLocate_result.size());
 	std::vector<double> err_rot;		err_rot.reserve(mLocate_result.size());
 	std::vector<double> err_pos;		err_pos.reserve(mLocate_result.size());
 
 #if 1
-	size_t sum_putative_mat(0.0), sum_inlier_mat(0.0);
-	double sum_t_corres(0.0), sum_t_ransac(0.0);
-	double sum_err_rot(0.0), sum_err_pos(0.0);
+	unsigned int sum_putative_mat=0, sum_inlier_mat=0;
+	double sum_t_corres=0, sum_t_ransac=0;
+	double sum_err_rot=0, sum_err_pos=0;
 
 	// do some statistics
 	for (size_t i = 0; i < mNum_totalimage; i++)
@@ -718,21 +718,21 @@ void VISUALWORDS_3DPOINT_HANDLER::SaveLocalizationResult(const std::string& s,
 		err_rot.push_back(res.error_rotation);
 		err_pos.push_back(res.error_center);
 		
-		sum_putative_mat += putative_mat[i];
-		sum_inlier_mat += inlier_mat[i];
-		sum_t_corres += t_corres[i];
-		sum_t_ransac += t_ransac[i];
-		sum_err_rot += err_rot[i];
-		sum_err_pos += err_pos[i];
+		sum_putative_mat += res.num_putative_match;
+		sum_inlier_mat += res.num_inlier_match;
+		sum_t_corres += res.time_findcorresp;
+		sum_t_ransac += res.time_computepose;
+		sum_err_rot += res.error_rotation;
+		sum_err_pos += res.error_center;
 	}
-
+	unsigned int cnt = mNum_locatedimage;
 	os	<< "mean" << std::endl;
-	os	<< "putaive_mat: " << sum_putative_mat / putative_mat.size() << " "
-		<< "inlier_mat: " << sum_inlier_mat / inlier_mat.size() << " "
-		<< "time_corres: " << sum_t_corres / t_corres.size() << " "
-		<< "time_ransac: " << sum_t_ransac / t_ransac.size() << " "
-		<< "err_rotation: " << sum_err_rot / err_rot.size() << " "
-		<< "err_position: " << sum_err_pos / err_pos.size() << std::endl;
+	os << "putaive_mat: " << sum_putative_mat / cnt << " "
+		<< "inlier_mat: " << sum_inlier_mat / cnt << " "
+		<< "time_corres: " << sum_t_corres / cnt << " "
+		<< "time_ransac: " << sum_t_ransac / cnt << " "
+		<< "err_rotation: " << sum_err_rot / cnt << " "
+		<< "err_position: " << sum_err_pos / cnt << std::endl;
 
 	putative_mat.shrink_to_fit();
 	std::sort(putative_mat.begin(), putative_mat.end());
