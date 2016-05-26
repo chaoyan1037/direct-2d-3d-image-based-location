@@ -20,21 +20,35 @@ int main(int * argc, char** argv)
 	if (false == global::OpenRunningTimeFile()){
 		return false;
 	}
+
 //pre-proscess the original bundler.out
 //to get the query pictures pose ground truth
-#if 0
+#if 1
 	PARSE_BUNDLER parse_bundler("E:/Dubrovnik6K/bundle/bundle.orig.out");
 	parse_bundler.ParseBundlerFile();
-	parse_bundler.FindQueryPicture("E:/Dubrovnik6K/bundle/list.orig.txt");
-	parse_bundler.WriteQueryBundler("E:/Dubrovnik6K/bundle/bundle.query.out");
+
+  parse_bundler.FindQueryPicture("E:/Dubrovnik6K/bundle/list.orig.txt");
+  parse_bundler.WriteQueryBundler( "E:/Dubrovnik6K/bundle/bundle.query.point.out", true );
 	return 1;
 #endif
+
 	//test geometry
 #if 0
 	Test();
 	//Geometry geo;
 	//geo.TestGeometry();
 	return 1;
+#endif
+
+ // modify the original bundler, add feature point x, y 
+#if 1
+  VISUALWORDS_3DPOINT_HANDLER vw_3d_pointhandler( "E:/Dubrovnik6K",
+    "list.query.txt", "E:/Dubrovnik6K/bundle/bundle.query.cam.out" );
+  vw_3d_pointhandler.Init();
+  // when write bundle, should not load desc, and not release pictures
+  vw_3d_pointhandler.mParse_bundler.WriteBundlerWithXY( "E:/Dubrovnik6K/bundle/bundle.query.xy.out" );
+
+  return 1;
 #endif
 
 #if 0

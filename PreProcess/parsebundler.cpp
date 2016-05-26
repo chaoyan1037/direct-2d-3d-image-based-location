@@ -199,7 +199,7 @@ void PARSE_BUNDLER::FindQueryPicture(const std::string& s)
 }
 
 //
-void PARSE_BUNDLER::WriteQueryBundler(const std::string& s) const
+void PARSE_BUNDLER::WriteQueryBundler(const std::string& s, bool bWritepoint) const
 {
 	ofstream os(s, std::ios::out | std::ios::trunc);
 	if (0 == os.is_open()){
@@ -207,17 +207,36 @@ void PARSE_BUNDLER::WriteQueryBundler(const std::string& s) const
 		return;
 	}
 
-	auto & mCameras = mAll_pic_cameras.GetAllCameras();
+  const auto & mPictures = mAll_pic_cameras.GetAllPictures();
+	const auto & mCameras = mAll_pic_cameras.GetAllCameras();
 
 	os << "# Bundle file v0.3" << endl;
 
-	size_t num_cam = 0;
-	//count to number of cameras
+  // if camera i is query, query_cam_index[i] is the new query index of this camera
+  std::vector<size_t> query_cam_index( mNumCameras );
+  size_t num_cam = 0, num_pts = 0;
+	//count the number of cameras
 	for (size_t i = 0; i < mPic_query_mask.size(); i++){
-		if (1 == mPic_query_mask[i])
-			num_cam++;
+    if ( 1 == mPic_query_mask[i] )
+    { 
+      query_cam_index[i] = num_cam++;
+    }
 	}
-	os << num_cam << " " << int(0) << endl;
+
+  // find 3d points see in query pictures
+  std::vector<bool> points_in_query( mNumbPoints, false );
+  for ( size_t i = 0; bWritepoint && i < mNumbPoints; i++ )
+  {
+    for ( const auto& view : mFeature_infos[i].mView_list )
+    {
+      if ( 1 == mPic_query_mask[view.camera] ){
+        points_in_query[i] = true;
+        ++num_pts;
+        break;
+      }
+    }
+  }
+  os << num_cam << " " << num_pts << endl;
 
 	for (size_t i = 0; i < mPic_query_mask.size(); i++){
 		if (1 == mPic_query_mask[i]){
@@ -237,7 +256,113 @@ void PARSE_BUNDLER::WriteQueryBundler(const std::string& s) const
 				<< mCameras[i].translation(2) << endl;
 		}
 	}
+
+  for ( size_t i = 0; bWritepoint && i < mNumbPoints; i++ )
+  {
+    if ( 1 == points_in_query[i] ){
+      int view_lenth = mFeature_infos[i].mView_list.size();
+      int view_len_query = 0;
+      
+      //calculate true view_length include only query points in cameras
+      for ( int j = 0; j < view_lenth; j++ ){
+        if ( 1 == mPic_query_mask[mFeature_infos[i].mView_list[j].camera] )
+        {
+          view_len_query++;
+        }
+      }
+
+      os << mFeature_infos[i].mPoint.x << " "
+        << mFeature_infos[i].mPoint.y << " "
+        << mFeature_infos[i].mPoint.z << std::endl
+        << (int)mFeature_infos[i].mPoint.r << " "
+        << (int)mFeature_infos[i].mPoint.g << " "
+        << (int)mFeature_infos[i].mPoint.b << std::endl
+        << view_len_query << " ";
+
+      for ( int j = 0; j < view_lenth; j++ )
+      {
+        if ( 1 == mPic_query_mask[mFeature_infos[i].mView_list[j].camera] )
+        {
+          os << query_cam_index[mFeature_infos[i].mView_list[j].camera] << " "
+            << mFeature_infos[i].mView_list[j].key << " "
+            << mFeature_infos[i].mView_list[j].x << " "
+            << mFeature_infos[i].mView_list[j].y << " ";
+        }
+      }
+      os << std::endl;
+    }
+  }
+
 	os.close();
+}
+
+void PARSE_BUNDLER::SetQueryMask(){
+  mPic_query_mask.assign( mNumCameras, true );
+}
+void PARSE_BUNDLER::ResetQueryMask(){
+  mPic_query_mask.assign( mNumCameras, false );
+}
+
+
+void PARSE_BUNDLER::WriteBundlerWithXY( const std::string& s ) const
+{
+  ofstream os( s, std::ios::out | std::ios::trunc );
+  if ( 0 == os.is_open() ){
+    global::cout << " open bundle file fail: " << s << endl;
+    return;
+  }
+
+  const auto & mCameras = mAll_pic_cameras.GetAllCameras();
+
+  os << "# Bundle file v0.3" << endl;
+  os << mNumCameras << " " << mNumbPoints << endl;
+
+  for ( size_t i = 0; i < mPic_query_mask.size(); i++ ){
+    if ( 1 == mPic_query_mask[i] ){
+      os << mCameras[i].focal_length << " "
+        << mCameras[i].k1 << " " << mCameras[i].k2 << endl;
+      os << mCameras[i].rotation( 0, 0 ) << " "
+        << mCameras[i].rotation( 0, 1 ) << " "
+        << mCameras[i].rotation( 0, 2 ) << endl;
+      os << mCameras[i].rotation( 1, 0 ) << " "
+        << mCameras[i].rotation( 1, 1 ) << " "
+        << mCameras[i].rotation( 1, 2 ) << endl;
+      os << mCameras[i].rotation( 2, 0 ) << " "
+        << mCameras[i].rotation( 2, 1 ) << " "
+        << mCameras[i].rotation( 2, 2 ) << endl;
+      os << mCameras[i].translation( 0 ) << " "
+        << mCameras[i].translation( 1 ) << " "
+        << mCameras[i].translation( 2 ) << endl;
+    }
+  }
+
+
+  for ( size_t i = 0; i < mNumbPoints; i++ )
+  {
+      int view_lenth = mFeature_infos[i].mView_list.size();
+
+      os << mFeature_infos[i].mPoint.x << " "
+        << mFeature_infos[i].mPoint.y << " "
+        << mFeature_infos[i].mPoint.z << std::endl
+        << (int)mFeature_infos[i].mPoint.r << " "
+        << (int)mFeature_infos[i].mPoint.g << " "
+        << (int)mFeature_infos[i].mPoint.b << std::endl
+        << view_lenth << " ";
+
+      for ( int j = 0; j < view_lenth; j++ )
+      {
+        if ( 1 == mPic_query_mask[mFeature_infos[i].mView_list[j].camera] )
+        {
+          os << mFeature_infos[i].mView_list[j].camera << " "
+            << mFeature_infos[i].mView_list[j].key << " "
+            << mFeature_infos[i].mView_list[j].x << " "
+            << mFeature_infos[i].mView_list[j].y << " ";
+        }
+      }
+      os << std::endl;
+  }
+
+  os.close();
 }
 
 //save the built information so next time directly load the file

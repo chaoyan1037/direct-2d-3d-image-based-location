@@ -187,7 +187,12 @@ public:
 
 	//after load original bundler file, mark the query image
 	void FindQueryPicture(const std::string& s);
-	void WriteQueryBundler(const std::string& s) const;
+  void WriteQueryBundler( const std::string& s, bool bWritepoint = false) const;
+  void SetQueryMask();
+  void ResetQueryMask();
+
+  //after load the original bundle.out, add the sift point x, y
+  void WriteBundlerWithXY( const std::string& s ) const;
 
 private:
 

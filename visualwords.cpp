@@ -345,7 +345,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 
 	timer.Start();
 	mVW_handler.LoadDBVisualWords();
-	mVW_handler.BuildIndex();
+  mVW_handler.BuildIndex();
 	timer.Stop();
 	global::cout << "Load and build visual words time: " << timer.GetElapsedTimeAsString() << std::endl;
 
@@ -364,10 +364,12 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 			mParse_bundler.ParseBundlerFile();
 			//load the database pictures
 			auto& mPicCam_db = mParse_bundler.GetAllPicturesAndCameras();
-			mPicCam_db.LoadPicturesKeyFile();
+			mPicCam_db.LoadPicturesKeyFile(true);
 			mParse_bundler.LoadCameraInfo();
+      global::cout << "load camera info okay." << std::endl;
+
 			//after load bundler and execute LoadCameraInfo, release the pictures
-			mPicCam_db.ClearPics();
+			//mPicCam_db.ClearPics();
 			mParse_bundler.SaveFeature3DInfro("parsed_bundler.txt");
 			global::cout << "load *.key files and save parsed_bundler.txt" << endl;
 		}
@@ -375,8 +377,8 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 		global::cout << "Parse Bundler file time: " << timer.GetElapsedTimeAsString() << std::endl;
 
 		//then build the index 3d points
-		BuildIndex3DPoints();
-		SaveIndex3DPoints("index_3dpoints.txt");
+    BuildIndex3DPoints();
+    SaveIndex3DPoints("index_3dpoints.txt");
 		global::cout << "build index and save index_3dpoints.txt" << endl;
 	}
 	timer.Stop();

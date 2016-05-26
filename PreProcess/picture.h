@@ -108,7 +108,7 @@ public:
 	//PICTURE& operator=(const PICTURE &pic);
 
 	//load descriptor from the .key file
-	bool LoadKeyPointAndDes(const std::string& des_filename, bool bHave_image_size=false);
+  bool LoadKeyPointAndDes( const std::string& des_filename, bool bLoadDesc = true );
 	
 	//set size
 	void SetImageSize(const int height, const int width);
@@ -168,7 +168,7 @@ public:
 	~ALL_PICTURES();
 
 	// load all picture keys from the list, clear if exist
-	bool LoadPicturesKeyFile();
+  bool LoadPicturesKeyFile( bool bLoaddesc = true );
 
 	// and load the camera pose ground truth
 	bool LoadCamerasPose(const std::string& s);

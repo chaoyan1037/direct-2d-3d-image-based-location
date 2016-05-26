@@ -59,7 +59,7 @@ void PICTURE::ClearData()
 }
 
 //load  key points and descriptors  
-bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bHave_image_size)
+bool PICTURE::LoadKeyPointAndDes( const std::string& des_filename, bool bLoadDesc )
 {
 	std::ifstream infile(des_filename, std::ios::in);
 	if (!infile.is_open()){
@@ -74,7 +74,7 @@ bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bHave_ima
 	mDescriptors.resize(mKeypoint_num);
 
 	//assert(mDes_length == mDescriptors[0].legth);
-
+  std::string line;
 	for (int cnt = 0; cnt < mKeypoint_num; cnt++)
 	{
 		auto& sift_keypt = mFeature_points[cnt];
@@ -82,19 +82,15 @@ bool PICTURE::LoadKeyPointAndDes(const std::string& des_filename, bool bHave_ima
 		infile >> sift_keypt.y >> sift_keypt.x 
 			>> sift_keypt.scale >> sift_keypt.orientation;
 
-		/*if (bHave_image_size){
-			assert(mImageHeight>0 && mImgaeWidth > 0);
-			//origin: right_bottom, x-axis points left, y-axis points up
-			sift_keypt.x = mImgaeWidth - 1.0 - sift_keypt.x;
-			sift_keypt.y = mImageHeight - 1.0 - sift_keypt.y;
-			// center the keypoints around the center of the image
-			// first we need to get the dimensions of the image
-			//sift_keypt.x -= (mImgaeWidth - 1.0) / 2.0f;
-			//sift_keypt.y = (mImageHeight - 1.0) / 2.0f - sift_keypt.y;
-
-			//origin: left_bottom, x-axis points right, y-axis points up
-			//sift_keypt.y = mImageHeight - 1.0 - sift_keypt.y;
-		}*/
+    // now do not load desc
+    if ( !bLoadDesc )
+    {
+      for ( int i = 0; i < 8; i++ )
+      {
+        getline( infile, line );
+      }
+      continue;
+    }
 				
 		//directly operate on the desc
 		//do not use temp variable and then push_back it into the vector
@@ -148,7 +144,7 @@ ALL_PICTURES::~ALL_PICTURES(){
 }
 
 //if there already exists pictures, clear them then reload
-bool ALL_PICTURES::LoadPicturesKeyFile()
+bool ALL_PICTURES::LoadPicturesKeyFile( bool bLoaddesc )
 {
 	Timer timer;
 	timer.Start();
@@ -214,7 +210,7 @@ bool ALL_PICTURES::LoadPicturesKeyFile()
 	{
 		pic_keyfilename[i].replace(pic_keyfilename[i].end() - 3, pic_keyfilename[i].end(), "key");
 		//load a picture
-		mPictures[i].LoadKeyPointAndDes(mKeyfilepath + "/" + pic_keyfilename[i], mIsqueryimage);
+    mPictures[i].LoadKeyPointAndDes( mKeyfilepath + "/" + pic_keyfilename[i], bLoaddesc );
 	}
 
 	timer.Stop();
