@@ -116,7 +116,7 @@ VISUALWORDS_3DPOINT_HANDLER::VISUALWORDS_3DPOINT_HANDLER(const std::string &bund
 	mPicCam_db.SetParameters(bundle_path, list_txt);
 	mParse_bundler.SetBundleFileName(bundle_file);
 
-	mMaxNumberCorrespondence = 200;
+	mMaxNumberCorrespondence = 100;
 	mMinNumberCorrespondence = 12;
 
 	//integer mean per visual words
