@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Compiled source and libraries
 *.o
 *.a
@@ -26,5 +27,4 @@ loca_yan*
 
 # Compiled binaries and temporary library files
 x64
-
 

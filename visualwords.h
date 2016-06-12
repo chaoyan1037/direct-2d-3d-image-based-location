@@ -1,3 +1,4 @@
+
 #ifndef _VISUAL_WORDS_H_
 #define _VISUAL_WORDS_H_
 
@@ -175,5 +176,7 @@ public:
 	std::vector<LOCATE_RESULT>		mLocate_result;
 
 };
+
+
 
 #endif

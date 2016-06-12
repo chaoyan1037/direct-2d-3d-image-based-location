@@ -1,3 +1,4 @@
+
 #include "global.h"
 #include <iostream>
 
@@ -31,5 +32,4 @@ namespace global{
 	}
 #endif
 }
-
 

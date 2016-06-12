@@ -1,3 +1,4 @@
+
 #ifndef _SBA_WARPER_H
 #define _SBA_WARPER_H
 
@@ -114,6 +115,8 @@ struct sba_warper_data
 
 //assume para_camera: f d and 3 for rotation and 3 for translation
 bool SbaMotionOnly(sba_warper_data& sba);
+
+
 
 
 #endif
