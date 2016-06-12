@@ -396,7 +396,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::Init()
 //success return 1, else return 0
 bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const size_t loca_res_index, const PICTURE& picture)
 {
-	auto& pic_feat_desc			  = picture.GetDescriptor();
+	const auto& pic_feat_desc			  = picture.GetDescriptor();
 	auto& correspdence_2d_3d	= mLocate_result[loca_res_index].mFeature_3d_point_correspondence;
   auto& corres_2d_3d_record = mLocate_result[loca_res_index].mFeat_3DPt_corres_record;
   corres_2d_3d_record.clear();
@@ -448,7 +448,7 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const size_t loca_res_index
 		int min_distance_3d_point_index[2] = {-1, -1};
 		
 		//for each visual words find all 3d point pair<int, int>
-		for (auto pair_3d_point : mVisualwords_index_3d[vw_index])
+		for (const auto& pair_3d_point : mVisualwords_index_3d[vw_index])
 		{
 			int point_3d_index = pair_3d_point.first;
 			int point_desc_index = pair_3d_point.second;
@@ -499,12 +499,12 @@ bool VISUALWORDS_3DPOINT_HANDLER::FindCorrespondence(const size_t loca_res_index
 	}
 
   // save the final correspondence into record
-  for ( auto map_3d_2d : corr_3D_to_2D ){
-    corres_2d_3d_record[map_3d_2d.second.first].push_back( map_3d_2d.first );
+  for ( const auto& map_3d_2d : corr_3D_to_2D ){
+    corres_2d_3d_record[map_3d_2d.second.first].push_back( int(map_3d_2d.first) );
   }
-  for ( auto corres_2d_3d:corres_2d_3d_record ){
+  for ( auto& corres_2d_3d:corres_2d_3d_record ){
     while( 3 > corres_2d_3d.second.size() ){
-      corres_2d_3d.second.push_back( -1 );
+      corres_2d_3d.second.push_back( int(-1) );
     }
   }
 
@@ -556,12 +556,12 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
 	picture.GetImageSize(height, width);
 	assert(height && width);
 
-	auto& pic_point_2d = picture.GetFeaturePoint();
+	const auto& pic_point_2d = picture.GetFeaturePoint();
 
-  for ( auto pa : correspdence_2d_3d )
+  for ( const auto pa : correspdence_2d_3d )
 	{
-		auto& pt_2d = pic_point_2d[pa.first];
-		auto& pt_3d = mPoint3D[pa.second];
+		const auto& pt_2d = pic_point_2d[pa.first];
+		const auto& pt_3d = mPoint3D[pa.second];
 		mat_2d_3d.push_back(std::make_pair(
 			cv::Vec2d(pt_2d.x, height -1.0 - pt_2d.y),
 			cv::Vec3d(-pt_3d.x, -pt_3d.y, -pt_3d.z)));
@@ -611,10 +611,10 @@ bool VISUALWORDS_3DPOINT_HANDLER::LocateSinglePicture(const size_t loca_res_inde
     }
   }
 
-  for ( auto corres_2d_3d : corres_2d_3d_record ){ 
+  for ( auto& corres_2d_3d : corres_2d_3d_record ){ 
     while ( 4 > corres_2d_3d.second.size())
     {
-      corres_2d_3d.second.push_back( -1 );
+      corres_2d_3d.second.push_back( int(-1) );
     }
   }
 
