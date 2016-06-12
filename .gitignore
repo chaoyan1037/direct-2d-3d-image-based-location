@@ -1,0 +1,30 @@
+# Compiled source and libraries
+*.o
+*.a
+*.so
+*.dll
+*.exe
+*.obj
+*.lib
+*log
+*sdf
+
+sba_debug*
+sba_warper_debug*
+*.txt
+
+*.cluster
+visual_words_sift_100k.cluster
+
+TooN
+KeyMatchCasHash
+loca_yan*
+
+
+# emacs temp files
+*~
+
+# Compiled binaries and temporary library files
+x64
+
+
