@@ -1,4 +1,3 @@
-
 #ifndef _VISUAL_WORDS_H_
 #define _VISUAL_WORDS_H_
 

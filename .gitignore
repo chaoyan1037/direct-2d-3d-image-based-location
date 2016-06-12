@@ -9,6 +9,8 @@
 *.lib
 *log
 *sdf
+*.gitignore
+
 
 sba_debug*
 sba_warper_debug*

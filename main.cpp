@@ -1,4 +1,3 @@
-
 //main function for image location
 #include <fstream>
 #include <iostream>

@@ -1,4 +1,3 @@
-
 #include <memory.h>
 #include <math.h>
 
@@ -919,6 +918,7 @@ void sba_warper_data::print(std::ostream& os)
 		}
 		os << endl;
 	}
+	
 #endif
 
 }
