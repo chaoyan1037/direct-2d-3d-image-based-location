@@ -9,7 +9,7 @@
 /* define the global settings                                           */
 /************************************************************************/
 //#define USE_CASHASHING
-//#define USE_STD_COUT
+#define USE_STD_COUT
 
 namespace global{
 
